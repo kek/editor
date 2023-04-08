@@ -6,7 +6,6 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dark-light = "1.0.0"
-eframe = {version = "0.21.0", default-features = false, features = ["default_fonts", "glow", "persistence"]}
-egui = "0.21.0"
+eframe = { git = "https://github.com/emilk/egui.git", rev = "eb0812a9", default-features = false, features = [ "default_fonts", "glow", "persistence" ] }
+egui = { git = "https://github.com/emilk/egui.git", rev = "eb0812a9" }
 serde = {version = "1", features = ["derive"]}

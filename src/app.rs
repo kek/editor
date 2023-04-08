@@ -13,15 +13,7 @@ impl Default for EditorApp {
 }
 
 impl EditorApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let mode = dark_light::detect();
-
-        match mode {
-            dark_light::Mode::Dark => cc.egui_ctx.set_visuals(egui::Visuals::dark()),
-            dark_light::Mode::Light => cc.egui_ctx.set_visuals(egui::Visuals::light()),
-            dark_light::Mode::Default => cc.egui_ctx.set_visuals(egui::Visuals::light()),
-        }
-
+    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Default::default()
     }
 }
