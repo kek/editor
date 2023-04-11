@@ -42,15 +42,17 @@ impl EditorApp {
 
 impl eframe::App for EditorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.buffer = match &self.buffer {
-            Some(contents) => Some(contents.to_string()),
-            None => Some(match std::fs::read_to_string(&self.active_file.clone()) {
+        self.buffer = if let Some(contents) = &self.buffer {
+            Some(contents.to_string())
+        } else {
+            let contents = match std::fs::read_to_string(&self.active_file.clone()) {
                 Ok(contents) => contents.clone(),
                 Err(err) => {
                     eprintln!("Error: {}", err);
-                    "read error".to_owned()
+                    "read error".to_owned() // TODO: This does not happen when a file is deleted
                 }
-            }),
+            };
+            Some(contents)
         };
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -66,9 +68,7 @@ impl eframe::App for EditorApp {
                         self.active_file = path;
                         match std::fs::read_to_string(&self.active_file) {
                             Ok(buffer) => self.buffer = Some(buffer),
-                            Err(err) => {
-                                eprintln!("Error: {}", err);
-                            }
+                            Err(err) => eprintln!("Error: {}", err),
                         }
                     }
                 }
@@ -76,10 +76,10 @@ impl eframe::App for EditorApp {
 
             let scroll_area = egui::ScrollArea::both();
             scroll_area.show(ui, |ui| {
-                let mut text = (match &mut self.buffer {
+                let mut text = match &mut self.buffer {
                     Some(buffer) => buffer,
                     None => "empty",
-                })
+                }
                 .to_owned();
                 let text_edit = egui::TextEdit::multiline(&mut text).code_editor();
                 if ui.add_sized(ui.available_size(), text_edit).changed {
