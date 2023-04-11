@@ -19,7 +19,7 @@ impl Default for EditorApp {
         Self {
             buffer: None,
             paths: paths.to_vec(),
-            active_file: paths[0].to_owned().clone(),
+            active_file: paths[0].to_owned(),
         }
     }
 }
