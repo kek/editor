@@ -36,12 +36,14 @@ impl EditorApp {
         Default::default()
     }
 
-    fn save_active_file(&mut self, buffer: Option<String>) {
+    fn save_active_file(&mut self) {
         let path = self.active_file.clone();
 
-        match buffer {
+        match self.buffer.clone() {
             Some(contents) => {
-                println!("saving file {:?} with contents {:?}", path, contents);
+                let mid = std::cmp::min(40, contents.len());
+                let summary = contents.split_at(mid).0.to_owned() + "...";
+                println!("saving file {:?} with contents {:?}", path, summary);
                 std::fs::write(path, contents).unwrap();
             }
             None => println!("no buffer to save"),
@@ -65,19 +67,28 @@ impl eframe::App for EditorApp {
             }),
         };
         egui::CentralPanel::default().show(ctx, |ui| {
-            for path in self.paths.clone().into_iter() {
-                if ui.button(&path).clicked() {
-                    println!("file clicked {:?}", path);
-                    self.save_active_file(self.buffer.clone());
-                    self.active_file = path;
-                    match std::fs::read_to_string(&self.active_file) {
-                        Ok(buffer) => self.buffer = Some(buffer),
-                        Err(err) => {
-                            eprintln!("Error: {}", err);
+            ui.horizontal(|ui| {
+                for path in self.paths.clone().into_iter() {
+                    let file_button = if path == self.active_file {
+                        let button_text = egui::WidgetText::from(&path).color(egui::Color32::WHITE);
+                        egui::Button::new(button_text).fill(egui::Color32::from_rgb(150, 150, 175))
+                    } else {
+                        egui::Button::new(&path)
+                    };
+                    let clickable = ui.add(file_button);
+                    if clickable.clicked() {
+                        println!("file clicked {:?}", path);
+                        self.save_active_file();
+                        self.active_file = path;
+                        match std::fs::read_to_string(&self.active_file) {
+                            Ok(buffer) => self.buffer = Some(buffer),
+                            Err(err) => {
+                                eprintln!("Error: {}", err);
+                            }
                         }
                     }
                 }
-            }
+            });
 
             let scroll_area = egui::ScrollArea::both();
             scroll_area.show(ui, |ui| {
@@ -90,14 +101,14 @@ impl eframe::App for EditorApp {
                 if ui.add_sized(ui.available_size(), text_edit).changed {
                     println!("buffer changed");
                     self.buffer = Some(text);
-                    self.save_active_file(self.buffer.clone());
+                    self.save_active_file();
                 }
             });
         });
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        self.save_active_file(self.buffer.clone());
+        self.save_active_file();
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
 }
