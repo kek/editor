@@ -10,20 +10,16 @@ pub struct EditorApp {
 impl Default for EditorApp {
     fn default() -> Self {
         let paths = [
-            "README.md".to_owned(),
-            "src/main.rs".to_owned(),
-            "src/app.rs".to_owned(),
-            "src/lib.rs".to_owned(),
-        ]
-        .to_vec();
-        let active_file: String = paths[0].clone();
-        let buffer = None;
-        println!("buffer: {:?}", buffer);
-        println!("active file: {:?}", active_file);
+            "README.md".to_string(),
+            "src/main.rs".to_string(),
+            "src/app.rs".to_string(),
+            "src/lib.rs".to_string(),
+        ];
+
         Self {
-            buffer,
-            paths,
-            active_file,
+            buffer: None,
+            paths: paths.to_vec(),
+            active_file: paths[0].to_owned().clone(),
         }
     }
 }
@@ -37,15 +33,8 @@ impl EditorApp {
     }
 
     fn save_active_file(&mut self) {
-        let path = self.active_file.clone();
-
-        match self.buffer.clone() {
-            Some(contents) => {
-                let mid = std::cmp::min(40, contents.len());
-                let summary = contents.split_at(mid).0.to_owned() + "...";
-                println!("saving file {:?} with contents {:?}", path, summary);
-                std::fs::write(path, contents).unwrap();
-            }
+        match &self.buffer {
+            Some(contents) => std::fs::write(&self.active_file, contents).unwrap(),
             None => println!("no buffer to save"),
         }
     }
@@ -56,10 +45,7 @@ impl eframe::App for EditorApp {
         self.buffer = match &self.buffer {
             Some(contents) => Some(contents.to_string()),
             None => Some(match std::fs::read_to_string(&self.active_file.clone()) {
-                Ok(contents) => {
-                    println!("read file {:?}", contents);
-                    contents.clone()
-                }
+                Ok(contents) => contents.clone(),
                 Err(err) => {
                     eprintln!("Error: {}", err);
                     "read error".to_owned()
@@ -76,7 +62,6 @@ impl eframe::App for EditorApp {
                         egui::Button::new(&path)
                     };
                     if ui.add(button).clicked() {
-                        println!("file clicked {:?}", path);
                         self.save_active_file();
                         self.active_file = path;
                         match std::fs::read_to_string(&self.active_file) {
@@ -98,7 +83,6 @@ impl eframe::App for EditorApp {
                 .to_owned();
                 let text_edit = egui::TextEdit::multiline(&mut text).code_editor();
                 if ui.add_sized(ui.available_size(), text_edit).changed {
-                    println!("buffer changed");
                     self.buffer = Some(text);
                     self.save_active_file();
                 }
