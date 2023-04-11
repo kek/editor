@@ -69,14 +69,13 @@ impl eframe::App for EditorApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
                 for path in self.paths.clone().into_iter() {
-                    let file_button = if path == self.active_file {
+                    let button = if path == self.active_file {
                         let button_text = egui::WidgetText::from(&path).color(egui::Color32::WHITE);
                         egui::Button::new(button_text).fill(egui::Color32::from_rgb(150, 150, 175))
                     } else {
                         egui::Button::new(&path)
                     };
-                    let clickable = ui.add(file_button);
-                    if clickable.clicked() {
+                    if ui.add(button).clicked() {
                         println!("file clicked {:?}", path);
                         self.save_active_file();
                         self.active_file = path;
