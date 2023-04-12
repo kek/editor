@@ -52,7 +52,7 @@ impl eframe::App for EditorApp {
                 Err(err) => {
                     eprintln!("Error: {}", err);
                     // TODO: This does not happen when a file is externally deleted
-                    "read error".to_owned() 
+                    "read error".to_owned()
                 }
             };
             Some(contents)
