@@ -1,3 +1,5 @@
+use std::f32::INFINITY;
+
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct EditorApp {
@@ -49,7 +51,7 @@ impl eframe::App for EditorApp {
                 Ok(contents) => contents.clone(),
                 Err(err) => {
                     eprintln!("Error: {}", err);
-                    "read error".to_owned() // TODO: This does not happen when a file is deleted
+                    "read error".to_owned() // TODO: This does not happen when a file is externally deleted
                 }
             };
             Some(contents)
@@ -74,15 +76,20 @@ impl eframe::App for EditorApp {
                 }
             });
 
-            let scroll_area = egui::ScrollArea::both();
+            let scroll_area = egui::ScrollArea::both().auto_shrink([true, true]);
             scroll_area.show(ui, |ui| {
                 let mut text = match &mut self.buffer {
                     Some(buffer) => buffer,
                     None => "empty",
                 }
                 .to_owned();
-                let text_edit = egui::TextEdit::multiline(&mut text).code_editor();
-                if ui.add_sized(ui.available_size(), text_edit).changed {
+                let mut text_edit = egui::TextEdit::multiline(&mut text).code_editor();
+                text_edit = text_edit.frame(true);
+
+                if ui
+                    .add_sized([INFINITY, ui.available_height()], text_edit)
+                    .changed
+                {
                     self.buffer = Some(text);
                     self.save_active_file();
                 }
