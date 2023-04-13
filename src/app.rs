@@ -71,17 +71,30 @@ impl EditorApp {
             None => println!("no buffer to save"),
         }
     }
+
+    fn switch_to_file(&mut self, path: &String) {
+        self.save_active_file();
+        self.active_file = Some(path.clone());
+        match std::fs::read_to_string(&self.active_file.clone().unwrap()) {
+            Ok(buffer) => self.buffer = Some(buffer),
+            Err(err) => eprintln!("Error: {}", err),
+        }
+    }
 }
 
 impl eframe::App for EditorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::SidePanel::left("my_left_panel").show(ctx, |ui| {
-            self.files.iter().for_each(|file| {
+            self.files.clone().iter().for_each(|file| {
                 let path = file.as_path().to_str().unwrap();
                 let file_name = file.file_name().unwrap().to_str().unwrap();
                 if ui.button(file_name).clicked() {
                     self.output += &(path.to_owned() + "\n");
-                    self.paths.append([path.to_owned()].to_vec().as_mut());
+                    if !self.paths.contains(&path.to_owned()) {
+                        self.paths.insert(0, path.to_owned());
+                    }
+                    // remove duplicates from self.paths
+                    self.switch_to_file(&path.to_string());
                 }
             });
         });
@@ -102,12 +115,15 @@ impl eframe::App for EditorApp {
                         }
                         None => egui::Button::new(&path),
                     };
-                    if ui.add(button).clicked() {
-                        self.save_active_file();
-                        self.active_file = Some(path);
-                        match std::fs::read_to_string(&self.active_file.clone().unwrap()) {
-                            Ok(buffer) => self.buffer = Some(buffer),
-                            Err(err) => eprintln!("Error: {}", err),
+                    let button = ui.add(button);
+                    if button.clicked() {
+                        self.switch_to_file(&path);
+                    }
+                    if button.clicked_by(egui::PointerButton::Secondary) {
+                        self.paths.retain(|p| p.to_string() != path);
+                        if self.active_file == Some(path) {
+                            self.active_file = None;
+                            self.buffer = None;
                         }
                     }
                 }
