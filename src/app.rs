@@ -1,3 +1,4 @@
+use itertools::Itertools;
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct EditorApp {
@@ -90,12 +91,10 @@ impl eframe::App for EditorApp {
                 let file_name = file.file_name().unwrap().to_str().unwrap();
                 if ui.button(file_name).clicked() {
                     self.output += &(path.to_owned() + "\n");
-                    if !self.paths.contains(&path.to_owned()) {
                         self.paths.insert(0, path.to_owned());
+                        self.paths = self.paths.clone().into_iter().unique().collect();
                     }
-                    // remove duplicates from self.paths
                     self.switch_to_file(&path.to_string());
-                }
             });
         });
 
