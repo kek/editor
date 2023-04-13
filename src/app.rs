@@ -28,6 +28,7 @@ impl Default for EditorApp {
     }
 }
 
+// TODO: Only goes one level deep
 fn file_list() -> Vec<std::path::PathBuf> {
     std::fs::read_dir(".")
         .unwrap()
@@ -134,11 +135,11 @@ impl eframe::App for EditorApp {
             if ui.button("Test").clicked() {
                 self.output += "test\n";
             };
-            if ui.button("Run").clicked() {
-                self.output += "run\n";
-            };
             if ui.button("Commit").clicked() {
                 self.output += "commit\n";
+            };
+            if ui.button("Revert").clicked() {
+                self.output += "revert\n";
             };
             ui.monospace(&self.output);
         });
@@ -154,7 +155,11 @@ impl eframe::App for EditorApp {
                             Ok(contents) => contents.clone(),
                             Err(err) => {
                                 eprintln!("Error: {}", err);
-                                // TODO: This does not happen when a file is externally deleted
+                                // TODO: This does not happen when a file is
+                                // externally deleted while the app is running,
+                                // but it does happen when the saved state
+                                // references a file which doesn't exist
+                                println!("Error reading file: {}", path);
                                 "read error".to_owned()
                             }
                         };
