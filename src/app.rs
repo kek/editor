@@ -19,36 +19,8 @@ impl Default for EditorApp {
             "src/app.rs".to_string(),
             "src/lib.rs".to_string(),
         ];
-        let files: Vec<std::path::PathBuf> = std::fs::read_dir(".")
-            .unwrap()
-            .filter(|res| {
-                res.as_ref()
-                    .unwrap()
-                    .path()
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    != ".git".to_string()
-            })
-            .flat_map(move |res| {
-                if res.as_ref().unwrap().path().is_file() {
-                    vec![res.unwrap().path()]
-                } else {
-                    std::fs::read_dir(res.unwrap().path())
-                        .unwrap()
-                        .map(|res| res.map(|e| e.path()))
-                        .filter(|path| path.as_ref().unwrap().is_file())
-                        .collect::<Result<Vec<_>, std::io::Error>>()
-                        .unwrap()
-                }
-            })
-            .collect();
+        let files = file_list();
 
-        // print all files
-        files.iter().for_each(|file| {
-            println!("{:?}", file);
-        });
         Self {
             buffer: None,
             paths: paths.to_vec(),
@@ -57,6 +29,34 @@ impl Default for EditorApp {
             files,
         }
     }
+}
+
+fn file_list() -> Vec<std::path::PathBuf> {
+    std::fs::read_dir(".")
+        .unwrap()
+        .filter(|res| {
+            res.as_ref()
+                .unwrap()
+                .path()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                != ".git".to_string()
+        })
+        .flat_map(move |res| {
+            if res.as_ref().unwrap().path().is_file() {
+                vec![res.unwrap().path()]
+            } else {
+                std::fs::read_dir(res.unwrap().path())
+                    .unwrap()
+                    .map(|res| res.map(|e| e.path()))
+                    .filter(|path| path.as_ref().unwrap().is_file())
+                    .collect::<Result<Vec<_>, std::io::Error>>()
+                    .unwrap()
+            }
+        })
+        .collect()
 }
 
 impl EditorApp {
