@@ -86,7 +86,7 @@ impl EditorApp {
 
 impl eframe::App for EditorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::SidePanel::left("my_left_panel").show(ctx, |ui| {
+        egui::SidePanel::left("file_list").show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 self.files.clone().iter().for_each(|file| {
                     let path = file.as_path().to_str().unwrap();
@@ -100,7 +100,7 @@ impl eframe::App for EditorApp {
             });
         });
 
-        egui::TopBottomPanel::top("my_panel").show(ctx, |ui| {
+        egui::TopBottomPanel::top("file_contents").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 for path in self.paths.clone().into_iter() {
                     let button = match &self.active_file {
@@ -131,7 +131,7 @@ impl eframe::App for EditorApp {
             });
         });
 
-        egui::SidePanel::right("my_right_panel").show(ctx, |ui| {
+        egui::SidePanel::right("actions").show(ctx, |ui| {
             if ui.button("Test").clicked() {
                 self.output += "test\n";
             };
