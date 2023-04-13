@@ -86,15 +86,16 @@ impl EditorApp {
 impl eframe::App for EditorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::SidePanel::left("my_left_panel").show(ctx, |ui| {
-            self.files.clone().iter().for_each(|file| {
-                let path = file.as_path().to_str().unwrap();
-                let file_name = file.file_name().unwrap().to_str().unwrap();
-                if ui.button(file_name).clicked() {
-                    self.output += &(path.to_owned() + "\n");
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                self.files.clone().iter().for_each(|file| {
+                    let path = file.as_path().to_str().unwrap();
+                    let file_name = file.file_name().unwrap().to_str().unwrap();
+                    if ui.button(file_name).clicked() {
                         self.paths.insert(0, path.to_owned());
                         self.paths = self.paths.clone().into_iter().unique().collect();
+                        self.switch_to_file(&path.to_string());
                     }
-                    self.switch_to_file(&path.to_string());
+                });
             });
         });
 
