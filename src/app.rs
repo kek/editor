@@ -1,5 +1,3 @@
-use std::f32::INFINITY;
-
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct EditorApp {
@@ -7,6 +5,10 @@ pub struct EditorApp {
     active_file: String,
     #[serde(skip)]
     buffer: Option<String>,
+    #[serde(skip)]
+    output: String,
+    #[serde(skip)]
+    files: Vec<std::path::PathBuf>,
 }
 
 impl Default for EditorApp {
@@ -17,11 +19,42 @@ impl Default for EditorApp {
             "src/app.rs".to_string(),
             "src/lib.rs".to_string(),
         ];
+        let files: Vec<std::path::PathBuf> = std::fs::read_dir(".")
+            .unwrap()
+            .filter(|res| {
+                res.as_ref()
+                    .unwrap()
+                    .path()
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    != ".git".to_string()
+            })
+            .flat_map(move |res| {
+                if res.as_ref().unwrap().path().is_file() {
+                    vec![res.unwrap().path()]
+                } else {
+                    std::fs::read_dir(res.unwrap().path())
+                        .unwrap()
+                        .map(|res| res.map(|e| e.path()))
+                        .filter(|path| path.as_ref().unwrap().is_file())
+                        .collect::<Result<Vec<_>, std::io::Error>>()
+                        .unwrap()
+                }
+            })
+            .collect();
 
+        // print all files
+        files.iter().for_each(|file| {
+            println!("{:?}", file);
+        });
         Self {
             buffer: None,
             paths: paths.to_vec(),
             active_file: paths[0].to_owned(),
+            output: "".to_owned(),
+            files,
         }
     }
 }
@@ -57,7 +90,18 @@ impl eframe::App for EditorApp {
             };
             Some(contents)
         };
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::SidePanel::left("my_left_panel").show(ctx, |ui| {
+            // for all self.files
+            self.files.iter().for_each(|file| {
+                let path = file.as_path().to_str().unwrap();
+                let file_name = file.file_name().unwrap().to_str().unwrap();
+                if ui.button(file_name).clicked() {
+                    self.output += &(path.to_owned() + "\n");
+                    self.paths.append([path.to_owned()].to_vec().as_mut());
+                }
+            });
+        });
+        egui::TopBottomPanel::top("my_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 for path in self.paths.clone().into_iter() {
                     let button = if path == self.active_file {
@@ -76,22 +120,43 @@ impl eframe::App for EditorApp {
                     }
                 }
             });
+        });
 
-            let scroll_area = egui::ScrollArea::both().auto_shrink([true, true]);
-            scroll_area.show(ui, |ui| {
+        egui::SidePanel::right("my_right_panel").show(ctx, |ui| {
+            if ui.button("Test").clicked() {
+                self.output += "test\n";
+            };
+            if ui.button("Run").clicked() {
+                self.output += "run\n";
+            };
+            if ui.button("Commit").clicked() {
+                self.output += "commit\n";
+            };
+            ui.monospace(&self.output);
+        });
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            egui::ScrollArea::both().show(ui, |ui| {
                 let mut text = match &mut self.buffer {
                     Some(buffer) => buffer,
                     None => "empty",
                 }
                 .to_owned();
 
-                let text_edit = egui::TextEdit::multiline(&mut text).code_editor();
-                let max_size = [INFINITY, ui.available_height()];
-                if ui.add_sized(max_size, text_edit).changed {
+                let text_edit = egui::TextEdit::multiline(&mut text)
+                    .code_editor()
+                    .desired_width(ui.available_width());
+                if ui.add(text_edit).changed {
                     self.buffer = Some(text);
                     self.save_active_file();
                 }
             });
+            // let mut text = match &mut self.buffer {
+            //     Some(buffer) => buffer,
+            //     None => "empty",
+            // }
+            // .to_owned();
+            // ui.text_edit_multiline(&mut text);
         });
     }
 
