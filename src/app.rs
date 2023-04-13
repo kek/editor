@@ -20,7 +20,6 @@ impl Default for EditorApp {
         Self {
             buffer: None,
             paths: paths.to_vec(),
-            // active_file: Some(paths[0].to_owned()),
             active_file: None,
             output: "".to_owned(),
             files,
@@ -32,7 +31,14 @@ impl Default for EditorApp {
 fn file_list() -> Vec<std::path::PathBuf> {
     std::fs::read_dir(".")
         .unwrap()
-        .filter(|res| !(path_equals(res, &".git") || path_equals(res, &"target")))
+        .filter(|res| {
+            // TODO: Read .gitignore
+            !(path_equals(res, &".git")
+                || path_equals(res, &"target")
+                || path_equals(res, &"node_modules")
+                || path_equals(res, &"_build")
+                || path_equals(res, &".vscode"))
+        })
         .flat_map(|res| {
             if res.as_ref().unwrap().path().is_file() {
                 vec![res.unwrap().path()]
