@@ -1,3 +1,11 @@
+fn main() -> eframe::Result<()> {
+    eframe::run_native(
+        "Text Editor",
+        eframe::NativeOptions::default(),
+        Box::new(|cc| Box::new(EditorApp::new(cc))),
+    )
+}
+
 use itertools::Itertools;
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
