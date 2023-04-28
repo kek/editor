@@ -1,4 +1,12 @@
+use std::{io, thread};
+
 fn main() -> eframe::Result<()> {
+    thread::spawn(|| loop {
+        let mut buffer = String::new();
+        io::stdin().read_line(&mut buffer).unwrap();
+        println!("Got message: {}", buffer);
+    });
+
     eframe::run_native(
         "Text Editor",
         eframe::NativeOptions::default(),
@@ -45,7 +53,8 @@ fn file_list() -> Vec<std::path::PathBuf> {
                 || path_equals(res, &"target")
                 || path_equals(res, &"node_modules")
                 || path_equals(res, &"_build")
-                || path_equals(res, &".vscode"))
+                || path_equals(res, &".vscode")
+                || path_equals(res, &".elixir_ls"))
         })
         .flat_map(|res| {
             if res.as_ref().unwrap().path().is_file() {
