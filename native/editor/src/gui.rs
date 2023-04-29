@@ -1,6 +1,6 @@
 use std::{io, thread};
 
-fn main() -> eframe::Result<()> {
+fn main() -> () {
     thread::spawn(|| loop {
         let mut buffer = String::new();
         io::stdin().read_line(&mut buffer).unwrap();
@@ -12,6 +12,12 @@ fn main() -> eframe::Result<()> {
         eframe::NativeOptions::default(),
         Box::new(|cc| Box::new(EditorApp::new(cc))),
     )
+    .unwrap();
+    message("exit");
+}
+
+fn message(msg: &str) {
+    println!("{{\"event\":\"{}\"}}", msg);
 }
 
 use itertools::Itertools;
