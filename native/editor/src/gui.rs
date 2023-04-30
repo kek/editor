@@ -14,11 +14,11 @@ fn main() -> () {
         Box::new(|cc| Box::new(EditorApp::new(cc))),
     )
     .unwrap();
-    message("exit");
+    notify("event", "exit");
 }
 
-fn message(msg: &str) {
-    println!("{{\"event\":\"{}\"}}", msg);
+fn notify(typ: &str, msg: &str) {
+    println!("{}", serde_json::json!({ "type": typ, "message": msg }));
 }
 
 use itertools::Itertools;
@@ -53,12 +53,25 @@ impl Default for EditorApp {
         thread::spawn(move || loop {
             let mut buffer = String::new();
             io::stdin().read_line(&mut buffer).unwrap();
-            println!("Got message: {}", buffer);
-            tx.send(buffer).unwrap();
+            tx.send(buffer.trim_end().to_owned()).unwrap();
         });
+
+        // a bit unnecessary to use a channel for this, but it's a good example
+        // of how to send messages from the backend to the frontend, and it's
+        // also a good example of how to use a thread to listen for messages,
+        // and how to use a thread to send messages, and how to use a channel to
+        // send messages between threads, and how to use a channel to send
+        // messages from the backend to the frontend, and it's time to finish
+        // the sentence, and it's also a good example of how to use a thread to
+        // listen for messages, and how to use a thread to send messages, and
+        // how to use a channel, but please finish the sentence, please, please,
+        // please, please, please, please, please, please, please, please,
+        // please, please, please, please, I've had enough, just finish the
+        // sentence, please, please, please, please, I'm done, I'm done, I'm
+        // done, I'm done, I'm done, I'm done, I'm done
         thread::spawn(move || loop {
             let msg = Receiver::recv(&outgoing_rx).unwrap();
-            println!("Made msg in gui: {}", msg);
+            notify("gui-event", &msg);
         });
 
         Self {
@@ -125,7 +138,7 @@ impl EditorApp {
     fn save_active_file(&mut self) {
         match &self.buffer {
             Some(contents) => std::fs::write(&self.active_file.clone().unwrap(), contents).unwrap(),
-            None => println!("no buffer to save"),
+            None => notify("debug:no-buffer-to-save", "no buffer to save"),
         }
     }
 
@@ -134,7 +147,7 @@ impl EditorApp {
         self.active_file = Some(path.clone());
         match std::fs::read_to_string(&self.active_file.clone().unwrap()) {
             Ok(buffer) => self.buffer = Some(buffer),
-            Err(err) => eprintln!("Error: {}", err),
+            Err(err) => notify("error:switch-to-file", &err.to_string()),
         }
     }
 
@@ -147,7 +160,7 @@ impl EditorApp {
             thread::spawn(move || loop {
                 let rx = &mutex.lock().unwrap();
                 let msg = rx.recv().unwrap();
-                println!("got message in gui: {}", msg);
+                notify("debug:gui-got-message", &msg);
                 *event_count.lock().unwrap() += 1;
                 signal.request_repaint();
             });
@@ -156,8 +169,9 @@ impl EditorApp {
 }
 
 impl eframe::App for EditorApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        self.outgoing_tx.send("update".to_owned()).unwrap();
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // How to send message from frontend to backend
+        // self.outgoing_tx.send("update".to_owned()).unwrap();
         self.listen_for_events(ctx);
 
         egui::SidePanel::left("file_list").show(ctx, |ui| {
@@ -169,6 +183,7 @@ impl eframe::App for EditorApp {
                         self.paths.insert(0, path.to_owned());
                         self.paths = self.paths.clone().into_iter().unique().collect();
                         self.switch_to_file(&path.to_string());
+                        self.outgoing_tx.send("switch-to-file".to_owned()).unwrap();
                     }
                 });
             });
@@ -230,12 +245,12 @@ impl eframe::App for EditorApp {
                         let contents = match std::fs::read_to_string(path) {
                             Ok(contents) => contents.clone(),
                             Err(err) => {
-                                eprintln!("Error: {}", err);
+                                notify("error", &err.to_string());
                                 // TODO: This does not happen when a file is
                                 // externally deleted while the app is running,
                                 // but it does happen when the saved state
                                 // references a file which doesn't exist
-                                println!("Error reading file: {}", path);
+                                notify("error:reading-file", path);
                                 "read error".to_owned()
                             }
                         };
