@@ -39,6 +39,7 @@ pub struct EditorApp {
     incoming_rx: Arc<Mutex<Receiver<String>>>,
     #[serde(skip)]
     complete: bool,
+    event_count: Arc<Mutex<i64>>,
 }
 
 impl Default for EditorApp {
@@ -69,6 +70,7 @@ impl Default for EditorApp {
             outgoing_tx,
             incoming_rx: Arc::new(Mutex::new(incoming_rx)),
             complete: false,
+            event_count: Arc::new(Mutex::new(0)),
         }
     }
 }
@@ -139,11 +141,13 @@ impl EditorApp {
     fn listen_for_events(&mut self, mutex: Arc<Mutex<Receiver<String>>>) {
         if !self.complete {
             self.complete = true;
+            let event_count = self.event_count.clone();
 
             thread::spawn(move || loop {
                 let rx = &mutex.lock().unwrap();
                 let msg = rx.recv().unwrap();
                 println!("got message in gui: {}", msg);
+                *event_count.lock().unwrap() += 1;
             });
         }
     }
@@ -201,6 +205,8 @@ impl eframe::App for EditorApp {
         });
 
         egui::SidePanel::right("actions").show(ctx, |ui| {
+            ui.label("Event count");
+            ui.label(format!("{}", *self.event_count.lock().unwrap()));
             if ui.button("Test").clicked() {
                 self.output += "test\n";
             };
