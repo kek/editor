@@ -8,7 +8,7 @@ defmodule Editor.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      {Editor.GUI, :please}
+      %{id: Editor.GUI, start: {Editor.GUI, :start_link, [:please]}, restart: :transient}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
