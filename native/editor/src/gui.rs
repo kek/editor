@@ -1,12 +1,13 @@
-use std::{io, thread};
+use std::{
+    io,
+    sync::{
+        mpsc::{self, Receiver},
+        Arc, Mutex,
+    },
+    thread,
+};
 
 fn main() -> () {
-    thread::spawn(|| loop {
-        let mut buffer = String::new();
-        io::stdin().read_line(&mut buffer).unwrap();
-        println!("Got message: {}", buffer);
-    });
-
     eframe::run_native(
         "Text Editor",
         eframe::NativeOptions::default(),
@@ -32,12 +33,32 @@ pub struct EditorApp {
     output: String,
     #[serde(skip)]
     files: Vec<std::path::PathBuf>,
+    #[serde(skip)]
+    outgoing_tx: mpsc::Sender<String>,
+    #[serde(skip)]
+    incoming_rx: Arc<Mutex<Receiver<String>>>,
+    #[serde(skip)]
+    complete: bool,
 }
 
 impl Default for EditorApp {
     fn default() -> Self {
         let paths = [];
         let files = file_list();
+        let (outgoing_tx, outgoing_rx) = mpsc::channel::<String>();
+        let (incoming_tx, incoming_rx) = mpsc::channel::<String>();
+
+        let tx = incoming_tx.clone();
+        thread::spawn(move || loop {
+            let mut buffer = String::new();
+            io::stdin().read_line(&mut buffer).unwrap();
+            println!("Got message: {}", buffer);
+            tx.send(buffer).unwrap();
+        });
+        thread::spawn(move || loop {
+            let msg = Receiver::recv(&outgoing_rx).unwrap();
+            println!("Made msg in gui: {}", msg);
+        });
 
         Self {
             buffer: None,
@@ -45,6 +66,9 @@ impl Default for EditorApp {
             active_file: None,
             output: "".to_owned(),
             files,
+            outgoing_tx,
+            incoming_rx: Arc::new(Mutex::new(incoming_rx)),
+            complete: false,
         }
     }
 }
@@ -111,10 +135,26 @@ impl EditorApp {
             Err(err) => eprintln!("Error: {}", err),
         }
     }
+
+    fn listen_for_events(&mut self, mutex: Arc<Mutex<Receiver<String>>>) {
+        if !self.complete {
+            self.complete = true;
+
+            thread::spawn(move || loop {
+                let rx = &mutex.lock().unwrap();
+                let msg = rx.recv().unwrap();
+                println!("got message in gui: {}", msg);
+            });
+        }
+    }
 }
 
 impl eframe::App for EditorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.outgoing_tx.send("update".to_owned()).unwrap();
+        let mutex = self.incoming_rx.clone();
+        self.listen_for_events(mutex);
+
         egui::SidePanel::left("file_list").show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 self.files.clone().iter().for_each(|file| {
