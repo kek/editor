@@ -138,26 +138,27 @@ impl EditorApp {
         }
     }
 
-    fn listen_for_events(&mut self, mutex: Arc<Mutex<Receiver<String>>>) {
+    fn listen_for_events(&mut self, ctx: &egui::Context) {
         if !self.complete {
+            let mutex = self.incoming_rx.clone();
             self.complete = true;
             let event_count = self.event_count.clone();
-
+            let signal = ctx.clone();
             thread::spawn(move || loop {
                 let rx = &mutex.lock().unwrap();
                 let msg = rx.recv().unwrap();
                 println!("got message in gui: {}", msg);
                 *event_count.lock().unwrap() += 1;
+                signal.request_repaint();
             });
         }
     }
 }
 
 impl eframe::App for EditorApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.outgoing_tx.send("update".to_owned()).unwrap();
-        let mutex = self.incoming_rx.clone();
-        self.listen_for_events(mutex);
+        self.listen_for_events(ctx);
 
         egui::SidePanel::left("file_list").show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
