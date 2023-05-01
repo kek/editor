@@ -32,7 +32,7 @@ defmodule Editor.GUI do
       |> Enum.reject(&(&1 == ""))
       |> Enum.flat_map(fn line ->
         case Jason.decode(line) do
-          {:ok, %{"event" => "exit"}} ->
+          {:ok, %{"typ" => "Event", "data" => "exit"}} ->
             Logger.debug("GUI exited")
             [{:stop, :shutdown, state}]
 

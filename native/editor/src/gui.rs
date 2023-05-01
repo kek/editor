@@ -1,6 +1,5 @@
 mod app;
 mod models;
-mod notification;
 
 fn main() -> () {
     eframe::run_native(
@@ -9,5 +8,5 @@ fn main() -> () {
         Box::new(|cc| Box::new(app::EditorApp::new(cc))),
     )
     .unwrap();
-    notification::produce("event", "exit");
+    models::Event::new(models::Typ::Event, "exit".to_string()).emit();
 }

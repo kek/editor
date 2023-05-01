@@ -1,5 +1,4 @@
 use super::models;
-use super::notification;
 use itertools::Itertools;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
@@ -53,8 +52,10 @@ impl Default for EditorApp {
         // sentence, please, please, please, please, I'm done, I'm done, I'm
         // done, I'm done, I'm done, I'm done, I'm done
         thread::spawn(move || loop {
-            let msg = mpsc::Receiver::recv(&outgoing_rx).unwrap();
-            notification::produce("gui-event", &msg);
+            match mpsc::Receiver::recv(&outgoing_rx) {
+                Ok(msg) => models::Event::new(models::Typ::GuiEvent, msg).emit(),
+                Err(_) => break,
+            }
         });
 
         Self {
@@ -121,7 +122,11 @@ impl EditorApp {
     pub(crate) fn save_active_file(&mut self) {
         match &self.buffer {
             Some(contents) => std::fs::write(&self.active_file.clone().unwrap(), contents).unwrap(),
-            None => notification::produce("debug:no-buffer-to-save", "no buffer to save"),
+            None => models::Event::new(
+                models::Typ::DebugNoBufferToSave,
+                "no buffer to save".to_owned(),
+            )
+            .emit(),
         }
     }
 
@@ -130,7 +135,7 @@ impl EditorApp {
         self.active_file = Some(path.clone());
         match std::fs::read_to_string(&self.active_file.clone().unwrap()) {
             Ok(buffer) => self.buffer = Some(buffer),
-            Err(err) => notification::produce("error:switch-to-file", &err.to_string()),
+            Err(err) => models::Event::new(models::Typ::ErrorSwitchToFile, err.to_string()).emit(),
         }
     }
 
@@ -143,7 +148,7 @@ impl EditorApp {
             thread::spawn(move || loop {
                 let rx = &mutex.lock().unwrap();
                 let msg = rx.recv().unwrap();
-                notification::produce("debug:gui-got-message", &msg);
+                models::Event::new(models::Typ::DebugGuiGotMessage, msg).emit();
                 *event_count.lock().unwrap() += 1;
                 signal.request_repaint();
             });
@@ -231,12 +236,13 @@ impl eframe::App for EditorApp {
                         let contents = match std::fs::read_to_string(path) {
                             Ok(contents) => contents.clone(),
                             Err(err) => {
-                                notification::produce("error", &err.to_string());
+                                models::Event::new(models::Typ::Error, err.to_string()).emit();
                                 // TODO: This does not happen when a file is
                                 // externally deleted while the app is running,
                                 // but it does happen when the saved state
                                 // references a file which doesn't exist
-                                notification::produce("error:reading-file", path);
+                                models::Event::new(models::Typ::ErrorReadingFile, path.to_owned())
+                                    .emit();
                                 "read error".to_owned()
                             }
                         };
