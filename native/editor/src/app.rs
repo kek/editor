@@ -1,4 +1,5 @@
 use super::notification;
+// use super::shared_things;
 use itertools::Itertools;
 use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, Mutex};
@@ -205,6 +206,9 @@ impl eframe::App for EditorApp {
         egui::SidePanel::right("actions").show(ctx, |ui| {
             ui.label("Event count");
             ui.label(format!("{}", *self.event_count.lock().unwrap()));
+            ui.label("nif value");
+            let nif_value = 1;
+            ui.label(format!("{}", nif_value));
             if ui.button("Test").clicked() {
                 self.output += "test\n";
             };

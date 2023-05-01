@@ -1,5 +1,6 @@
 mod app;
 mod notification;
+mod stuff;
 
 fn main() -> () {
     eframe::run_native(

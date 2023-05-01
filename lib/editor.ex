@@ -16,4 +16,6 @@ defmodule Editor do
   def make_channel(_debug_pid), do: :erlang.nif_error(:nif_not_loaded)
 
   def send_on_channel(_channel, _integer), do: :erlang.nif_error(:nif_not_loaded)
+
+  def something(_), do: :erlang.nif_error(:nif_not_loaded)
 end

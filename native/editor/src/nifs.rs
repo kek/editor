@@ -1,3 +1,5 @@
+mod stuff;
+
 use rustler::{
     init, nif, Encoder, Env, JobSpawner, LocalPid, OwnedEnv, ResourceArc, Term, ThreadSpawner,
 };
@@ -75,7 +77,8 @@ init!(
         make_resource,
         read_resource,
         make_channel,
-        send_on_channel
+        send_on_channel,
+        stuff::something
     ],
     load = load
 );
