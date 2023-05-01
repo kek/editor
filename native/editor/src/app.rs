@@ -1,7 +1,7 @@
 use super::models;
 use super::notification;
 use itertools::Itertools;
-use std::sync::mpsc::{self, Receiver};
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::{self, io, thread};
 
@@ -19,7 +19,7 @@ pub struct EditorApp {
     #[serde(skip)]
     pub(crate) outgoing_tx: mpsc::Sender<String>,
     #[serde(skip)]
-    pub(crate) incoming_rx: Arc<Mutex<Receiver<String>>>,
+    pub(crate) incoming_rx: Arc<Mutex<mpsc::Receiver<String>>>,
     #[serde(skip)]
     pub(crate) complete: bool,
     pub(crate) event_count: Arc<Mutex<i64>>,
@@ -53,7 +53,7 @@ impl Default for EditorApp {
         // sentence, please, please, please, please, I'm done, I'm done, I'm
         // done, I'm done, I'm done, I'm done, I'm done
         thread::spawn(move || loop {
-            let msg = Receiver::recv(&outgoing_rx).unwrap();
+            let msg = mpsc::Receiver::recv(&outgoing_rx).unwrap();
             notification::produce("gui-event", &msg);
         });
 
