@@ -1,5 +1,5 @@
+use super::models;
 use super::notification;
-// use super::shared_things;
 use itertools::Itertools;
 use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, Mutex};
@@ -207,7 +207,7 @@ impl eframe::App for EditorApp {
             ui.label("Event count");
             ui.label(format!("{}", *self.event_count.lock().unwrap()));
             ui.label("nif value");
-            let nif_value = 1;
+            let nif_value = models::something(1);
             ui.label(format!("{}", nif_value));
             if ui.button("Test").clicked() {
                 self.output += "test\n";

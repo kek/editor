@@ -1,4 +1,4 @@
-mod stuff;
+mod models;
 
 use rustler::{
     init, nif, Encoder, Env, JobSpawner, LocalPid, OwnedEnv, ResourceArc, Term, ThreadSpawner,
@@ -69,6 +69,11 @@ fn read_resource(resource: ResourceArc<TestResource>) -> i32 {
     *resource.test_field.read().unwrap()
 }
 
+#[nif]
+fn something(x: i32) -> i32 {
+    models::something(x)
+}
+
 init!(
     "Elixir.Editor",
     [
@@ -78,7 +83,7 @@ init!(
         read_resource,
         make_channel,
         send_on_channel,
-        stuff::something
+        something
     ],
     load = load
 );
