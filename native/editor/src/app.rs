@@ -38,19 +38,6 @@ impl Default for EditorApp {
             tx.send(buffer.trim_end().to_owned()).unwrap();
         });
 
-        // a bit unnecessary to use a channel for this, but it's a good example
-        // of how to send messages from the backend to the frontend, and it's
-        // also a good example of how to use a thread to listen for messages,
-        // and how to use a thread to send messages, and how to use a channel to
-        // send messages between threads, and how to use a channel to send
-        // messages from the backend to the frontend, and it's time to finish
-        // the sentence, and it's also a good example of how to use a thread to
-        // listen for messages, and how to use a thread to send messages, and
-        // how to use a channel, but please finish the sentence, please, please,
-        // please, please, please, please, please, please, please, please,
-        // please, please, please, please, I've had enough, just finish the
-        // sentence, please, please, please, please, I'm done, I'm done, I'm
-        // done, I'm done, I'm done, I'm done, I'm done
         thread::spawn(move || loop {
             match mpsc::Receiver::recv(&outgoing_rx) {
                 Ok(msg) => models::Event::new(models::Typ::GuiEvent, msg).emit(),
