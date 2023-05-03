@@ -1,6 +1,6 @@
-defmodule Editor do
+defmodule Editor.NIF do
   @moduledoc """
-  Documentation for `Editor`.
+  Documentation for `Editor.NIF`.
   """
   use Rustler, otp_app: :editor, crate: "editor"
 

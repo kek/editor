@@ -33,7 +33,7 @@ defmodule Editor.GUI do
       |> String.split("\n")
       |> Enum.reject(&(&1 == ""))
       |> Enum.flat_map(fn line ->
-        result = Editor.decode_event(line)
+        result = Editor.NIF.decode_event(line)
         Logger.debug("Decoded GUI event: #{inspect(result)}")
 
         case result do
@@ -61,7 +61,7 @@ defmodule Editor.GUI do
   def output(s), do: output(__MODULE__, s)
 
   def output(gui, data) do
-    event_json = Editor.test_event_json(data)
+    event_json = Editor.NIF.test_event_json(data)
     GenServer.call(gui, {:output, event_json})
   end
 
