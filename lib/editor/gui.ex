@@ -61,13 +61,11 @@ defmodule Editor.GUI do
   def output(s), do: output(__MODULE__, s)
 
   def output(gui, data) do
-    event_json = Editor.NIF.test_event_json(data)
-    GenServer.call(gui, {:output, event_json})
+    GenServer.call(gui, {:output, Editor.NIF.test_event_json(data)})
   end
 
-  def quit(gui) do
-    GenServer.call(gui, {:output})
-  end
+  def quit, do: quit(__MODULE__)
+  def quit(gui), do: GenServer.call(gui, {:quit})
 
   def handle_call({:output, s}, _from, state) do
     send(state.port, {self(), {:command, "#{s}\n"}})
