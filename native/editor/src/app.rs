@@ -16,9 +16,9 @@ pub struct EditorApp {
     #[serde(skip)]
     pub(crate) files: Vec<std::path::PathBuf>,
     #[serde(skip)]
-    pub(crate) outgoing_tx: mpsc::Sender<String>,
+    pub(crate) outgoing_tx: mpsc::Sender<models::Event>,
     #[serde(skip)]
-    pub(crate) incoming_rx: Arc<Mutex<mpsc::Receiver<String>>>,
+    pub(crate) incoming_rx: Arc<Mutex<mpsc::Receiver<models::Event>>>,
     #[serde(skip)]
     pub(crate) complete: bool,
     pub(crate) event_count: Arc<Mutex<i64>>,
@@ -28,8 +28,8 @@ impl Default for EditorApp {
     fn default() -> Self {
         let paths = [];
         let files = file_list();
-        let (outgoing_tx, outgoing_rx) = mpsc::channel::<String>();
-        let (incoming_tx, incoming_rx) = mpsc::channel::<String>();
+        let (outgoing_tx, outgoing_rx) = mpsc::channel::<models::Event>();
+        let (incoming_tx, incoming_rx) = mpsc::channel::<models::Event>();
 
         thread::spawn(read_incoming_events(incoming_tx));
         thread::spawn(write_outgoing_events(outgoing_rx));
@@ -48,24 +48,33 @@ impl Default for EditorApp {
     }
 }
 
-fn read_incoming_events(incoming_tx: mpsc::Sender<String>) -> impl FnOnce() {
+fn read_incoming_events(incoming_tx: mpsc::Sender<models::Event>) -> impl FnOnce() {
     move || loop {
         let mut buffer = String::new();
         {
             let this = io::stdin().read_line(&mut buffer);
             match this {
-                Ok(t) => t,
-                Err(e) => panic!("called `Result::unwrap()` on an `Err` value {}", &e),
+                Ok(_) => {
+                    let event = {
+                        match serde_json::from_str::<models::Event>(&buffer) {
+                            Ok(event) => event,
+                            Err(error) => {
+                                panic!("error parsing JSON: «{}» in «{}»", &error, buffer)
+                            }
+                        }
+                    };
+                    incoming_tx.send(event).unwrap()
+                }
+                Err(err) => panic!("error reading from stdin: {}", &err),
             }
         };
-        incoming_tx.send(buffer.trim_end().to_owned()).unwrap();
     }
 }
 
-fn write_outgoing_events(outgoing_rx: mpsc::Receiver<String>) -> impl FnOnce() {
+fn write_outgoing_events(outgoing_rx: mpsc::Receiver<models::Event>) -> impl FnOnce() {
     move || loop {
         match mpsc::Receiver::recv(&outgoing_rx) {
-            Ok(msg) => models::Event::new(models::Typ::GuiEvent, msg).emit(),
+            Ok(msg) => msg.emit(),
             Err(_) => break,
         }
     }
@@ -149,7 +158,8 @@ impl EditorApp {
             thread::spawn(move || loop {
                 let rx = &mutex.lock().unwrap();
                 let msg = rx.recv().unwrap();
-                models::Event::new(models::Typ::DebugGuiGotMessage, msg).emit();
+                let text = serde_json::to_string(&msg).unwrap();
+                models::Event::new(models::Typ::DebugGuiGotMessage, text).emit();
                 *event_count.lock().unwrap() += 1;
                 signal.request_repaint();
             });
@@ -172,7 +182,9 @@ impl eframe::App for EditorApp {
                         self.paths.insert(0, path.to_owned());
                         self.paths = self.paths.clone().into_iter().unique().collect();
                         self.switch_to_file(&path.to_string());
-                        self.outgoing_tx.send("switch-to-file".to_owned()).unwrap();
+                        let event =
+                            models::Event::new(models::Typ::GuiEvent, "switch-to-file".to_owned());
+                        self.outgoing_tx.send(event).unwrap();
                     }
                 });
             });
@@ -212,9 +224,6 @@ impl eframe::App for EditorApp {
         egui::SidePanel::right("actions").show(ctx, |ui| {
             ui.label("Event count");
             ui.label(format!("{}", *self.event_count.lock().unwrap()));
-            ui.label("nif value");
-            let nif_value = models::something(1);
-            ui.label(format!("{}", nif_value));
             if ui.button("Test").clicked() {
                 self.output += "test\n";
             };

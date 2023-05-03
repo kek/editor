@@ -8,5 +8,5 @@ fn main() -> () {
         Box::new(|cc| Box::new(app::EditorApp::new(cc))),
     )
     .unwrap();
-    models::Event::new(models::Typ::Event, "exit".to_string()).emit();
+    models::Event::new(models::Typ::Exit, "byebye".to_owned()).emit();
 }

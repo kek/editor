@@ -2,11 +2,7 @@ use std::io::Write;
 
 use serde::{Deserialize, Serialize};
 
-pub fn something(x: i32) -> i32 {
-    x
-}
-
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, rustler::NifTaggedEnum)]
 #[allow(dead_code)] // false positive because two Cargo targets?
 pub(crate) enum Typ {
     GuiEvent,
@@ -16,9 +12,10 @@ pub(crate) enum Typ {
     ErrorReadingFile,
     Error,
     Event,
+    Exit,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, rustler::NifMap)]
 #[allow(dead_code)]
 pub(crate) struct Event {
     pub typ: Typ,
@@ -33,9 +30,15 @@ impl Event {
 
     /// Print the event to stdout.
     pub(crate) fn emit(&self) {
+        // let json = format!("{}\n", serde_json::to_string(&self).unwrap());
         let json = serde_json::to_string(&self).unwrap();
-        if let Err(e) = std::io::stdout().write_all(json.as_bytes()) {
+        let stdout = &mut std::io::stdout();
+        if let Err(e) = stdout.write_all(json.as_bytes()) {
             panic!("stdout closed: {}", e);
+        }
+        // it's either this or appending a newline to the JSON string
+        if let Err(e) = stdout.flush() {
+            panic!("stdout flush failed: {}", e);
         }
     }
 }

@@ -26,26 +26,23 @@ defmodule Editor.GUI do
   end
 
   def handle_info({_port, {:data, data}}, state) do
+    Logger.debug("GUI data: #{inspect(data)}")
+
     result =
       data
       |> String.split("\n")
       |> Enum.reject(&(&1 == ""))
       |> Enum.flat_map(fn line ->
-        case Jason.decode(line) do
-          {:ok, %{"typ" => "Event", "data" => "exit"}} ->
+        result = Editor.decode_event(line)
+        Logger.debug("Decoded GUI event: #{inspect(result)}")
+
+        case result do
+          %{typ: :exit} ->
             Logger.debug("GUI exited")
             [{:stop, :shutdown, state}]
 
-          {:ok, %{"error" => message}} ->
-            Logger.error("Error from GUI: #{message}")
-            []
-
-          {:ok, message} ->
-            Logger.warn("Unknown data from GUI: #{inspect(message)}")
-            []
-
-          {:error, wtf} ->
-            Logger.error("Invalid JSON from GUI: #{inspect(line)}: #{inspect(wtf)}")
+          something_else ->
+            Logger.error("Unknown event from GUI: #{inspect(something_else)}")
             []
         end
       end)
@@ -63,8 +60,9 @@ defmodule Editor.GUI do
 
   def output(s), do: output(__MODULE__, s)
 
-  def output(gui, s) do
-    GenServer.call(gui, {:output, s})
+  def output(gui, data) do
+    event_json = Editor.test_event_json(data)
+    GenServer.call(gui, {:output, event_json})
   end
 
   def quit(gui) do

@@ -17,5 +17,7 @@ defmodule Editor do
 
   def send_on_channel(_channel, _integer), do: :erlang.nif_error(:nif_not_loaded)
 
-  def something(_), do: :erlang.nif_error(:nif_not_loaded)
+  def test_event_json(_data), do: :erlang.nif_error(:nif_not_loaded)
+
+  def decode_event(_data), do: :erlang.nif_error(:nif_not_loaded)
 end

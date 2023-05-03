@@ -70,8 +70,20 @@ fn read_resource(resource: ResourceArc<TestResource>) -> i32 {
 }
 
 #[nif]
-fn something(x: i32) -> i32 {
-    models::something(x)
+fn test_event_json(data: String) -> String {
+    println!("Event data: {:?}", data);
+    serde_json::to_string(&models::Event::new(models::Typ::Event, data)).unwrap()
+}
+
+#[nif]
+fn decode_event(data: String) -> models::Event {
+    match serde_json::from_str(&data) {
+        Ok(event) => {
+            println!("Decoded event data: {:?}", data);
+            event
+        }
+        Err(err) => panic!("Could not decode event: «{}« because «{}»", data, err),
+    }
 }
 
 init!(
@@ -83,7 +95,8 @@ init!(
         read_resource,
         make_channel,
         send_on_channel,
-        something
+        test_event_json,
+        decode_event
     ],
     load = load
 );

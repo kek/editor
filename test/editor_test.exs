@@ -23,8 +23,4 @@ defmodule EditorTest do
     Editor.send_on_channel(channel, 101)
     assert_receive 101
   end
-
-  test "something" do
-    assert Editor.something(1) == 1
-  end
 end
