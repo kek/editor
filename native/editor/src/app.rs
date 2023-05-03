@@ -31,19 +31,8 @@ impl Default for EditorApp {
         let (outgoing_tx, outgoing_rx) = mpsc::channel::<String>();
         let (incoming_tx, incoming_rx) = mpsc::channel::<String>();
 
-        let tx = incoming_tx.clone();
-        thread::spawn(move || loop {
-            let mut buffer = String::new();
-            io::stdin().read_line(&mut buffer).unwrap();
-            tx.send(buffer.trim_end().to_owned()).unwrap();
-        });
-
-        thread::spawn(move || loop {
-            match mpsc::Receiver::recv(&outgoing_rx) {
-                Ok(msg) => models::Event::new(models::Typ::GuiEvent, msg).emit(),
-                Err(_) => break,
-            }
-        });
+        thread::spawn(read_incoming_events(incoming_tx));
+        thread::spawn(write_outgoing_events(outgoing_rx));
 
         Self {
             buffer: None,
@@ -55,6 +44,29 @@ impl Default for EditorApp {
             incoming_rx: Arc::new(Mutex::new(incoming_rx)),
             complete: false,
             event_count: Arc::new(Mutex::new(0)),
+        }
+    }
+}
+
+fn read_incoming_events(incoming_tx: mpsc::Sender<String>) -> impl FnOnce() {
+    move || loop {
+        let mut buffer = String::new();
+        {
+            let this = io::stdin().read_line(&mut buffer);
+            match this {
+                Ok(t) => t,
+                Err(e) => panic!("called `Result::unwrap()` on an `Err` value {}", &e),
+            }
+        };
+        incoming_tx.send(buffer.trim_end().to_owned()).unwrap();
+    }
+}
+
+fn write_outgoing_events(outgoing_rx: mpsc::Receiver<String>) -> impl FnOnce() {
+    move || loop {
+        match mpsc::Receiver::recv(&outgoing_rx) {
+            Ok(msg) => models::Event::new(models::Typ::GuiEvent, msg).emit(),
+            Err(_) => break,
         }
     }
 }
