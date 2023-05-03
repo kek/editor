@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use serde::{Deserialize, Serialize};
 
 pub fn something(x: i32) -> i32 {
@@ -29,7 +31,11 @@ impl Event {
         Self { typ, data }
     }
 
+    /// Print the event to stdout.
     pub(crate) fn emit(&self) {
-        println!("{}", serde_json::to_string(&self).unwrap());
+        let json = serde_json::to_string(&self).unwrap();
+        if let Err(e) = std::io::stdout().write_all(json.as_bytes()) {
+            panic!("stdout closed: {}", e);
+        }
     }
 }
