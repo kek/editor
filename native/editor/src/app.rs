@@ -65,12 +65,7 @@ pub(crate) fn file_list() -> Vec<std::path::PathBuf> {
         .unwrap()
         .filter(|res| {
             // TODO: Read .gitignore
-            !(path_equals(res, &".git")
-                || path_equals(res, &"target")
-                || path_equals(res, &"node_modules")
-                || path_equals(res, &"_build")
-                || path_equals(res, &".vscode")
-                || path_equals(res, &".elixir_ls"))
+            is_included_path(res.as_ref().unwrap())
         })
         .flat_map(|res| {
             if res.as_ref().unwrap().path().is_file() {
@@ -87,15 +82,22 @@ pub(crate) fn file_list() -> Vec<std::path::PathBuf> {
         .collect()
 }
 
-pub(crate) fn path_equals(res: &Result<std::fs::DirEntry, std::io::Error>, name: &&str) -> bool {
-    res.as_ref()
-        .unwrap()
-        .path()
-        .file_name()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        == name.to_string()
+fn is_included_path(direntry: &std::fs::DirEntry) -> bool {
+    ![
+        ".git",
+        "target",
+        "node_modules",
+        "_build",
+        ".vscode",
+        ".elixir_ls",
+        ".cargo",
+    ]
+    .iter()
+    .any(|excluded| direntry_equals(direntry, excluded))
+}
+
+fn direntry_equals(res: &std::fs::DirEntry, name: &str) -> bool {
+    res.path().file_name().unwrap().to_str().unwrap() == name.to_string()
 }
 
 impl EditorApp {
