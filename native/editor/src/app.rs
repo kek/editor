@@ -135,6 +135,7 @@ impl EditorApp {
             None => models::Event::new(
                 models::Typ::DebugNoBufferToSave,
                 "no buffer to save".to_owned(),
+                0,
             )
             .emit(),
         }
@@ -145,7 +146,15 @@ impl EditorApp {
         self.active_file = Some(path.clone());
         match std::fs::read_to_string(&self.active_file.clone().unwrap()) {
             Ok(buffer) => self.buffer = Some(buffer),
-            Err(err) => models::Event::new(models::Typ::ErrorSwitchToFile, err.to_string()).emit(),
+            Err(err) => {
+                let serial_placeholder = 0;
+                models::Event::new(
+                    models::Typ::ErrorSwitchToFile,
+                    err.to_string(),
+                    serial_placeholder,
+                )
+                .emit()
+            }
         }
     }
 
@@ -159,7 +168,9 @@ impl EditorApp {
                 let rx = &mutex.lock().unwrap();
                 let msg = rx.recv().unwrap();
                 let text = serde_json::to_string(&msg).unwrap();
-                models::Event::new(models::Typ::DebugGuiGotMessage, text).emit();
+                let serial_placeholder = 0;
+                models::Event::new(models::Typ::DebugGuiGotMessage, text, serial_placeholder)
+                    .emit();
                 *event_count.lock().unwrap() += 1;
                 signal.request_repaint();
             });
@@ -182,8 +193,11 @@ impl eframe::App for EditorApp {
                         self.paths.insert(0, path.to_owned());
                         self.paths = self.paths.clone().into_iter().unique().collect();
                         self.switch_to_file(&path.to_string());
-                        let event =
-                            models::Event::new(models::Typ::GuiEvent, "switch-to-file".to_owned());
+                        let event = models::Event::new(
+                            models::Typ::GuiEvent,
+                            "switch-to-file".to_owned(),
+                            0,
+                        );
                         self.outgoing_tx.send(event).unwrap();
                     }
                 });
@@ -246,13 +260,23 @@ impl eframe::App for EditorApp {
                         let contents = match std::fs::read_to_string(path) {
                             Ok(contents) => contents.clone(),
                             Err(err) => {
-                                models::Event::new(models::Typ::Error, err.to_string()).emit();
+                                let serial_placeholder = 0;
+                                models::Event::new(
+                                    models::Typ::Error,
+                                    err.to_string(),
+                                    serial_placeholder,
+                                )
+                                .emit();
                                 // TODO: This does not happen when a file is
                                 // externally deleted while the app is running,
                                 // but it does happen when the saved state
                                 // references a file which doesn't exist
-                                models::Event::new(models::Typ::ErrorReadingFile, path.to_owned())
-                                    .emit();
+                                models::Event::new(
+                                    models::Typ::ErrorReadingFile,
+                                    path.to_owned(),
+                                    0,
+                                )
+                                .emit();
                                 "read error".to_owned()
                             }
                         };

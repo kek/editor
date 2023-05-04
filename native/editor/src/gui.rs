@@ -8,5 +8,6 @@ fn main() -> () {
         Box::new(|cc| Box::new(app::EditorApp::new(cc))),
     )
     .unwrap();
-    models::Event::new(models::Typ::Exit, "byebye".to_owned()).emit();
+    let serial_placeholder = 0;
+    models::Event::new(models::Typ::Exit, "byebye".to_owned(), serial_placeholder).emit();
 }

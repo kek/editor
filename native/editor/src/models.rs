@@ -13,6 +13,7 @@ pub(crate) enum Typ {
     Error,
     Event,
     Exit,
+    TestEvent,
 }
 
 #[derive(Serialize, Deserialize, rustler::NifMap)]
@@ -20,12 +21,13 @@ pub(crate) enum Typ {
 pub(crate) struct Event {
     pub typ: Typ,
     pub data: String,
+    pub serial: i64,
 }
 
 #[allow(dead_code)]
 impl Event {
-    pub(crate) fn new(typ: Typ, data: String) -> Self {
-        Self { typ, data }
+    pub(crate) fn new(typ: Typ, data: String, serial: i64) -> Self {
+        Self { typ, data, serial }
     }
 
     /// Print the event to stdout.

@@ -70,9 +70,9 @@ fn read_resource(resource: ResourceArc<TestResource>) -> i32 {
 }
 
 #[nif]
-fn test_event_json(data: String) -> String {
+fn test_event_json(data: String, serial: i64) -> String {
     println!("Event data: {:?}", data);
-    serde_json::to_string(&models::Event::new(models::Typ::Event, data)).unwrap()
+    serde_json::to_string(&models::Event::new(models::Typ::TestEvent, data, serial)).unwrap()
 }
 
 #[nif]

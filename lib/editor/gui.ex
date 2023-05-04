@@ -17,7 +17,7 @@ defmodule Editor.GUI do
         port
       end
 
-    {:ok, %{port: port}}
+    {:ok, %{port: port, serial: 0}}
   end
 
   def handle_info({:DOWN, _, :port, _, _}, state) do
@@ -61,15 +61,16 @@ defmodule Editor.GUI do
   def output(s), do: output(__MODULE__, s)
 
   def output(gui, data) do
-    GenServer.call(gui, {:output, Editor.NIF.test_event_json(data)})
+    GenServer.call(gui, {:output, data})
   end
 
   def quit, do: quit(__MODULE__)
   def quit(gui), do: GenServer.call(gui, {:quit})
 
-  def handle_call({:output, s}, _from, state) do
-    send(state.port, {self(), {:command, "#{s}\n"}})
-    {:reply, :ok, state}
+  def handle_call({:output, data}, _from, %{port: port, serial: serial} = state) do
+    s = Editor.NIF.test_event_json(data, serial)
+    send(port, {self(), {:command, "#{s}\n"}})
+    {:reply, :ok, %{state | serial: serial + 1}}
   end
 
   def handle_call({:quit}, _from, state) do
