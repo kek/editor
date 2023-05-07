@@ -27,9 +27,9 @@ pub struct TestResource {
 }
 
 #[nif]
-fn make_resource() -> ResourceArc<TestResource> {
+fn make_resource(r: i64) -> ResourceArc<TestResource> {
     ResourceArc::new(TestResource {
-        test_field: RwLock::new(42),
+        test_field: RwLock::new(r),
     })
 }
 
