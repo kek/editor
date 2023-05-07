@@ -17,13 +17,13 @@ fn spawn_thread(debug_pid: LocalPid) -> () {
 
 fn load(env: Env, _term: Term) -> bool {
     rustler::resource!(TestResource, env);
-    rustler::resource!(ChannelResource, env);
+    rustler::resource!(ChannelResource<i64>, env);
     true
 }
 
 #[allow(dead_code)]
 pub struct TestResource {
-    test_field: RwLock<i32>,
+    test_field: RwLock<i64>,
 }
 
 #[nif]
@@ -34,13 +34,13 @@ fn make_resource(r: i64) -> ResourceArc<TestResource> {
 }
 
 #[allow(dead_code)]
-pub struct ChannelResource {
-    test_field: Mutex<mpsc::Sender<i32>>,
+pub struct ChannelResource<T> {
+    test_field: Mutex<mpsc::Sender<T>>,
 }
 
 #[nif]
-fn make_channel(debug_pid: LocalPid) -> ResourceArc<ChannelResource> {
-    let (tx, rx) = mpsc::channel::<i32>();
+fn make_channel(debug_pid: LocalPid) -> ResourceArc<ChannelResource<i64>> {
+    let (tx, rx) = mpsc::channel::<i64>();
 
     <ThreadSpawner as JobSpawner>::spawn(move || {
         let some_number = rx.recv().unwrap();
@@ -54,13 +54,13 @@ fn make_channel(debug_pid: LocalPid) -> ResourceArc<ChannelResource> {
 }
 
 #[nif]
-fn send_on_channel(channel: ResourceArc<ChannelResource>, i: i32) -> () {
+fn send_on_channel(channel: ResourceArc<ChannelResource<i64>>, i: i64) -> () {
     let tx = channel.test_field.lock().unwrap();
     tx.send(i).unwrap();
 }
 
 #[nif]
-fn read_resource(resource: ResourceArc<TestResource>) -> i32 {
+fn read_resource(resource: ResourceArc<TestResource>) -> i64 {
     *resource.test_field.read().unwrap()
 }
 
