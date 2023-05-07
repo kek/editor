@@ -17,13 +17,13 @@ defmodule Editor.NIF do
 
   def spawn_thread(_debug_pid), do: :erlang.nif_error(:nif_not_loaded)
 
-  def make_resource(_resource), do: :erlang.nif_error(:nif_not_loaded)
+  def make_number(_resource), do: :erlang.nif_error(:nif_not_loaded)
 
   @doc ~S"""
   ## Examples
 
     ```
-    iex> resource = Editor.NIF.make_resource(42)
+    iex> resource = Editor.NIF.make_number(42)
     iex> Editor.NIF.read_resource(resource)
     42
     ```

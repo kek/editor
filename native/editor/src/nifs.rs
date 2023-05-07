@@ -16,18 +16,18 @@ fn spawn_thread(debug_pid: LocalPid) -> () {
 }
 
 fn load(env: Env, _term: Term) -> bool {
-    rustler::resource!(TestResource, env);
+    rustler::resource!(TestResource<i64>, env);
     rustler::resource!(ChannelResource<i64>, env);
     true
 }
 
 #[allow(dead_code)]
-pub struct TestResource {
-    test_field: RwLock<i64>,
+pub struct TestResource<T> {
+    test_field: RwLock<T>,
 }
 
 #[nif]
-fn make_resource(r: i64) -> ResourceArc<TestResource> {
+fn make_number(r: i64) -> ResourceArc<TestResource<i64>> {
     ResourceArc::new(TestResource {
         test_field: RwLock::new(r),
     })
@@ -60,7 +60,7 @@ fn send_on_channel(channel: ResourceArc<ChannelResource<i64>>, i: i64) -> () {
 }
 
 #[nif]
-fn read_resource(resource: ResourceArc<TestResource>) -> i64 {
+fn read_resource(resource: ResourceArc<TestResource<i64>>) -> i64 {
     *resource.test_field.read().unwrap()
 }
 
@@ -85,7 +85,7 @@ init!(
     "Elixir.Editor.NIF",
     [
         spawn_thread,
-        make_resource,
+        make_number,
         read_resource,
         make_channel,
         send_on_channel,
