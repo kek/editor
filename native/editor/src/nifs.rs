@@ -65,16 +65,6 @@ fn read_resource(resource: ResourceArc<TestResource<i64>>) -> i64 {
 }
 
 #[nif]
-fn test_event_json(data: String, serial: i64) -> String {
-    serde_json::to_string(&models::SomeEvent::new(
-        models::Typ::TestEvent,
-        vec![data],
-        serial,
-    ))
-    .unwrap()
-}
-
-#[nif]
 fn set_available_files_json(path: Vec<String>, serial: i64) -> String {
     serde_json::to_string(&models::SomeEvent::new(
         models::Typ::OpenFileCommand,
@@ -103,7 +93,6 @@ init!(
         read_resource,
         make_channel,
         send_on_channel,
-        test_event_json,
         decode_event,
         set_available_files_json
     ],

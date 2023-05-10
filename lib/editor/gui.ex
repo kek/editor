@@ -62,12 +62,6 @@ defmodule Editor.GUI do
     {:noreply, state}
   end
 
-  def output(s), do: output(__MODULE__, s)
-
-  def output(gui, data) do
-    GenServer.call(gui, {:output, data})
-  end
-
   def set_available_files(paths), do: set_available_files(__MODULE__, paths)
 
   def set_available_files(gui, paths) do
@@ -76,12 +70,6 @@ defmodule Editor.GUI do
 
   def quit, do: quit(__MODULE__)
   def quit(gui), do: GenServer.call(gui, {:quit})
-
-  def handle_call({:output, data}, _from, %{port: port, serial: serial} = state) do
-    s = Editor.NIF.test_event_json(data, serial)
-    send(port, {self(), {:command, "#{s}\n"}})
-    {:reply, :ok, %{state | serial: serial + 1}}
-  end
 
   def handle_call({:set_available_files, paths}, _from, %{port: port, serial: serial} = state) do
     message = Editor.NIF.set_available_files_json(paths, serial)

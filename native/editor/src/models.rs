@@ -3,7 +3,6 @@ use std::io::Write;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, rustler::NifTaggedEnum)]
-#[allow(dead_code)] // false positive because two Cargo targets?
 pub(crate) enum Typ {
     GuiEvent,
     DebugNoBufferToSave,
@@ -13,7 +12,6 @@ pub(crate) enum Typ {
     Error,
     Event,
     Exit,
-    TestEvent,
     OpenFileCommand,
 }
 
