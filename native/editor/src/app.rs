@@ -7,14 +7,14 @@ use std::{self, io, thread};
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct EditorApp {
-    pub(crate) paths: Vec<String>,
+    pub(crate) open_files: Vec<String>,
     pub(crate) active_file: Option<String>,
     #[serde(skip)]
     pub(crate) buffer: Option<String>,
     #[serde(skip)]
     pub(crate) output: String,
     #[serde(skip)]
-    pub(crate) files: Vec<std::path::PathBuf>,
+    pub(crate) available_files: Arc<Mutex<Vec<std::path::PathBuf>>>,
     #[serde(skip)]
     pub(crate) outgoing_tx: mpsc::Sender<models::Event>,
     #[serde(skip)]
@@ -22,12 +22,13 @@ pub struct EditorApp {
     #[serde(skip)]
     pub(crate) complete: bool,
     pub(crate) event_count: Arc<Mutex<i64>>,
+    pub(crate) serial: Arc<Mutex<i64>>,
 }
 
 impl Default for EditorApp {
     fn default() -> Self {
         let paths = [];
-        let files = file_list();
+        let files = Arc::new(Mutex::new(file_list()));
         let (outgoing_tx, outgoing_rx) = mpsc::channel::<models::Event>();
         let (incoming_tx, incoming_rx) = mpsc::channel::<models::Event>();
 
@@ -36,14 +37,15 @@ impl Default for EditorApp {
 
         Self {
             buffer: None,
-            paths: paths.to_vec(),
+            open_files: paths.to_vec(),
             active_file: None,
             output: "".to_owned(),
-            files,
+            available_files: files,
             outgoing_tx,
             incoming_rx: Arc::new(Mutex::new(incoming_rx)),
             complete: false,
             event_count: Arc::new(Mutex::new(0)),
+            serial: Arc::new(Mutex::new(0)),
         }
     }
 }
@@ -80,45 +82,8 @@ fn write_outgoing_events(outgoing_rx: mpsc::Receiver<models::Event>) -> impl FnO
     }
 }
 
-// TODO: Only goes one level deep
 pub(crate) fn file_list() -> Vec<std::path::PathBuf> {
-    std::fs::read_dir(".")
-        .unwrap()
-        .filter(|res| {
-            // TODO: Read .gitignore
-            is_included_path(res.as_ref().unwrap())
-        })
-        .flat_map(|res| {
-            if res.as_ref().unwrap().path().is_file() {
-                vec![res.unwrap().path()]
-            } else {
-                std::fs::read_dir(res.unwrap().path())
-                    .unwrap()
-                    .map(|res| res.map(|e| e.path()))
-                    .filter(|path| path.as_ref().unwrap().is_file())
-                    .collect::<Result<Vec<_>, std::io::Error>>()
-                    .unwrap()
-            }
-        })
-        .collect()
-}
-
-fn is_included_path(direntry: &std::fs::DirEntry) -> bool {
-    ![
-        ".git",
-        "target",
-        "node_modules",
-        "_build",
-        ".vscode",
-        ".elixir_ls",
-        ".cargo",
-    ]
-    .iter()
-    .any(|excluded| direntry_equals(direntry, excluded))
-}
-
-fn direntry_equals(res: &std::fs::DirEntry, name: &str) -> bool {
-    res.path().file_name().unwrap().to_str().unwrap() == name.to_string()
+    [].to_vec()
 }
 
 impl EditorApp {
@@ -163,7 +128,9 @@ impl EditorApp {
             let mutex = self.incoming_rx.clone();
             self.complete = true;
             let event_count = self.event_count.clone();
+            let available_files = self.available_files.clone();
             let signal = ctx.clone();
+            let serial = self.serial.clone();
             thread::spawn(move || loop {
                 let rx = &mutex.lock().unwrap();
                 let msg = rx.recv().unwrap();
@@ -171,26 +138,23 @@ impl EditorApp {
                 match msg {
                     models::Event {
                         typ: models::Typ::OpenFileCommand,
-                        data: _path,
+                        data: path,
                         serial: _,
                     } => {
-                        // Update the state accordingly. We can't call functions
-                        // on self here because self can't be used within this
-                        // thread
-                        // self.switch_to_file(&path);
+                        *available_files.lock().unwrap() = vec![std::path::PathBuf::from(path)];
                     }
                     models::Event {
-                        typ: _typ,
-                        data: _data,
+                        typ: _,
+                        data: _,
                         serial: _,
                     } => {
-                        let serial_placeholder = 0;
                         models::Event::new(
                             models::Typ::DebugGuiGotMessage,
                             "got something unknown!".to_owned(),
-                            serial_placeholder,
+                            *serial.lock().unwrap(),
                         )
                         .emit();
+                        *serial.lock().unwrap() += 1;
                     }
                 };
                 *event_count.lock().unwrap() += 1;
@@ -208,12 +172,14 @@ impl eframe::App for EditorApp {
 
         egui::SidePanel::left("file_list").show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
-                self.files.clone().iter().for_each(|file| {
+                let mutex = &self.available_files.clone();
+                let files = mutex.lock().unwrap();
+                files.iter().for_each(|file| {
                     let path = file.as_path().to_str().unwrap();
                     let file_name = file.file_name().unwrap().to_str().unwrap();
                     if ui.button(file_name).clicked() {
-                        self.paths.insert(0, path.to_owned());
-                        self.paths = self.paths.clone().into_iter().unique().collect();
+                        self.open_files.insert(0, path.to_owned());
+                        self.open_files = self.open_files.clone().into_iter().unique().collect();
                         self.switch_to_file(&path.to_string());
                         let event = models::Event::new(
                             models::Typ::GuiEvent,
@@ -228,7 +194,7 @@ impl eframe::App for EditorApp {
 
         egui::TopBottomPanel::top("file_contents").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                for path in self.paths.clone().into_iter() {
+                for path in self.open_files.clone().into_iter() {
                     let button = match &self.active_file {
                         Some(active_file) => {
                             if path == active_file.clone() {
@@ -247,7 +213,7 @@ impl eframe::App for EditorApp {
                         self.switch_to_file(&path);
                     }
                     if button.clicked_by(egui::PointerButton::Secondary) {
-                        self.paths.retain(|p| p.to_string() != path);
+                        self.open_files.retain(|p| p.to_string() != path);
                         if self.active_file == Some(path) {
                             self.active_file = None;
                             self.buffer = None;
