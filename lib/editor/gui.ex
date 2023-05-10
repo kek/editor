@@ -14,10 +14,14 @@ defmodule Editor.GUI do
         port = Port.open({:spawn, "priv/native/editor"}, [:binary])
         Port.monitor(port)
         Process.link(port)
+        paths = ["mix.exs", "Cargo.toml", "README.md"]
+        message = Editor.NIF.set_available_files_json(paths, 0)
+        send(port, {self(), {:command, "#{message}\n"}})
+
         port
       end
 
-    {:ok, %{port: port, serial: 0}}
+    {:ok, %{port: port, serial: 1}}
   end
 
   def handle_info({:DOWN, _, :port, _, _}, state) do
