@@ -97,12 +97,17 @@ impl EditorApp {
     pub(crate) fn save_active_file(&mut self) {
         match &self.buffer {
             Some(contents) => std::fs::write(&self.active_file.clone().unwrap(), contents).unwrap(),
-            None => models::SomeEvent::new(
-                models::Typ::DebugNoBufferToSave,
-                vec!["no buffer to save".to_owned()],
-                0,
-            )
-            .emit(),
+            None => {
+                let serial = *self.serial.lock().unwrap();
+                self.outgoing_tx
+                    .send(models::SomeEvent::new(
+                        models::Typ::DebugNoBufferToSave,
+                        vec!["no buffer to save".to_owned()],
+                        serial,
+                    ))
+                    .unwrap();
+                *self.serial.lock().unwrap() += 1;
+            }
         }
     }
 
@@ -112,13 +117,14 @@ impl EditorApp {
         match std::fs::read_to_string(&self.active_file.clone().unwrap()) {
             Ok(buffer) => self.buffer = Some(buffer),
             Err(err) => {
-                let serial_placeholder = 0;
-                models::SomeEvent::new(
+                let serial = *self.serial.lock().unwrap();
+                let event = models::SomeEvent::new(
                     models::Typ::ErrorSwitchToFile,
                     vec![err.to_string()],
-                    serial_placeholder,
-                )
-                .emit()
+                    serial,
+                );
+                self.outgoing_tx.send(event).unwrap();
+                *self.serial.lock().unwrap() += 1;
             }
         }
     }
@@ -131,6 +137,7 @@ impl EditorApp {
             let available_files = self.available_files.clone();
             let signal = ctx.clone();
             let serial = self.serial.clone();
+            let tx = self.outgoing_tx.clone();
             thread::spawn(move || loop {
                 let rx = &mutex.lock().unwrap();
                 let msg = rx.recv().unwrap();
@@ -153,12 +160,12 @@ impl EditorApp {
                         data: _,
                         serial: _,
                     } => {
-                        models::SomeEvent::new(
+                        let debug_event = models::SomeEvent::new(
                             models::Typ::DebugGuiGotMessage,
                             vec!["got something unknown!".to_owned()],
                             *serial.lock().unwrap(),
-                        )
-                        .emit();
+                        );
+                        tx.send(debug_event).unwrap();
                         *serial.lock().unwrap() += 1;
                     }
                 };
@@ -253,23 +260,28 @@ impl eframe::App for EditorApp {
                         let contents = match std::fs::read_to_string(path) {
                             Ok(contents) => contents.clone(),
                             Err(err) => {
-                                let serial_placeholder = 0;
-                                models::SomeEvent::new(
-                                    models::Typ::Error,
-                                    vec![err.to_string()],
-                                    serial_placeholder,
-                                )
-                                .emit();
+                                let serial = *self.serial.lock().unwrap();
+                                self.outgoing_tx
+                                    .send(models::SomeEvent::new(
+                                        models::Typ::Error,
+                                        vec![err.to_string()],
+                                        serial,
+                                    ))
+                                    .unwrap();
+                                *self.serial.lock().unwrap() += 1;
                                 // TODO: This does not happen when a file is
                                 // externally deleted while the app is running,
                                 // but it does happen when the saved state
                                 // references a file which doesn't exist
-                                models::SomeEvent::new(
-                                    models::Typ::ErrorReadingFile,
-                                    vec![path.to_owned()],
-                                    0,
-                                )
-                                .emit();
+                                let serial = *self.serial.lock().unwrap();
+                                self.outgoing_tx
+                                    .send(models::SomeEvent::new(
+                                        models::Typ::ErrorReadingFile,
+                                        vec![path.to_owned()],
+                                        serial,
+                                    ))
+                                    .unwrap();
+                                *self.serial.lock().unwrap() += 1;
                                 "read error".to_owned()
                             }
                         };
