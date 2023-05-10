@@ -158,7 +158,7 @@ impl EditorApp {
         }
     }
 
-    pub(crate) fn listen_for_events(&mut self, ctx: &egui::Context) {
+    fn listen_for_events(self: &mut EditorApp, ctx: &egui::Context) {
         if !self.complete {
             let mutex = self.incoming_rx.clone();
             self.complete = true;
@@ -167,10 +167,32 @@ impl EditorApp {
             thread::spawn(move || loop {
                 let rx = &mutex.lock().unwrap();
                 let msg = rx.recv().unwrap();
-                let text = serde_json::to_string(&msg).unwrap();
-                let serial_placeholder = 0;
-                models::Event::new(models::Typ::DebugGuiGotMessage, text, serial_placeholder)
-                    .emit();
+                // let _msg_json = serde_json::to_string(&msg).unwrap();
+                match msg {
+                    models::Event {
+                        typ: models::Typ::OpenFileCommand,
+                        data: _path,
+                        serial: _,
+                    } => {
+                        // Update the state accordingly. We can't call functions
+                        // on self here because self can't be used within this
+                        // thread
+                        // self.switch_to_file(&path);
+                    }
+                    models::Event {
+                        typ: _typ,
+                        data: _data,
+                        serial: _,
+                    } => {
+                        let serial_placeholder = 0;
+                        models::Event::new(
+                            models::Typ::DebugGuiGotMessage,
+                            "got something unknown!".to_owned(),
+                            serial_placeholder,
+                        )
+                        .emit();
+                    }
+                };
                 *event_count.lock().unwrap() += 1;
                 signal.request_repaint();
             });

@@ -64,12 +64,24 @@ defmodule Editor.GUI do
     GenServer.call(gui, {:output, data})
   end
 
+  def open_file(path), do: open_file(__MODULE__, path)
+
+  def open_file(gui, path) do
+    GenServer.call(gui, {:open_file, path})
+  end
+
   def quit, do: quit(__MODULE__)
   def quit(gui), do: GenServer.call(gui, {:quit})
 
   def handle_call({:output, data}, _from, %{port: port, serial: serial} = state) do
     s = Editor.NIF.test_event_json(data, serial)
     send(port, {self(), {:command, "#{s}\n"}})
+    {:reply, :ok, %{state | serial: serial + 1}}
+  end
+
+  def handle_call({:open_file, path}, _from, %{port: port, serial: serial} = state) do
+    message = Editor.NIF.open_file_command_json(path, serial)
+    send(port, {self(), {:command, "#{message}\n"}})
     {:reply, :ok, %{state | serial: serial + 1}}
   end
 
