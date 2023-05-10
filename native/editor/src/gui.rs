@@ -9,5 +9,10 @@ fn main() -> () {
     )
     .unwrap();
     let serial_placeholder = 0;
-    models::Event::new(models::Typ::Exit, "byebye".to_owned(), serial_placeholder).emit();
+    models::SomeEvent::new(
+        models::Typ::Exit,
+        vec!["byebye".to_owned()],
+        serial_placeholder,
+    )
+    .emit();
 }

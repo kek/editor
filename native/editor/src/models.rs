@@ -18,22 +18,19 @@ pub(crate) enum Typ {
 }
 
 #[derive(Serialize, Deserialize, rustler::NifMap)]
-#[allow(dead_code)]
-pub(crate) struct Event {
+pub(crate) struct SomeEvent {
     pub typ: Typ,
-    pub data: String,
+    pub data: Vec<String>,
     pub serial: i64,
 }
 
-#[allow(dead_code)]
-impl Event {
-    pub(crate) fn new(typ: Typ, data: String, serial: i64) -> Self {
+impl SomeEvent {
+    pub(crate) fn new(typ: Typ, data: Vec<String>, serial: i64) -> Self {
         Self { typ, data, serial }
     }
 
-    /// Print the event to stdout.
+    #[allow(dead_code)]
     pub(crate) fn emit(&self) {
-        // let json = format!("{}\n", serde_json::to_string(&self).unwrap());
         let json = serde_json::to_string(&self).unwrap();
         let stdout = &mut std::io::stdout();
         if let Err(e) = stdout.write_all(json.as_bytes()) {

@@ -16,9 +16,9 @@ pub struct EditorApp {
     #[serde(skip)]
     pub(crate) available_files: Arc<Mutex<Vec<std::path::PathBuf>>>,
     #[serde(skip)]
-    pub(crate) outgoing_tx: mpsc::Sender<models::Event>,
+    pub(crate) outgoing_tx: mpsc::Sender<models::SomeEvent>,
     #[serde(skip)]
-    pub(crate) incoming_rx: Arc<Mutex<mpsc::Receiver<models::Event>>>,
+    pub(crate) incoming_rx: Arc<Mutex<mpsc::Receiver<models::SomeEvent>>>,
     #[serde(skip)]
     pub(crate) complete: bool,
     pub(crate) event_count: Arc<Mutex<i64>>,
@@ -29,8 +29,8 @@ impl Default for EditorApp {
     fn default() -> Self {
         let paths = [];
         let files = Arc::new(Mutex::new(file_list()));
-        let (outgoing_tx, outgoing_rx) = mpsc::channel::<models::Event>();
-        let (incoming_tx, incoming_rx) = mpsc::channel::<models::Event>();
+        let (outgoing_tx, outgoing_rx) = mpsc::channel::<models::SomeEvent>();
+        let (incoming_tx, incoming_rx) = mpsc::channel::<models::SomeEvent>();
 
         thread::spawn(read_incoming_events(incoming_tx));
         thread::spawn(write_outgoing_events(outgoing_rx));
@@ -50,7 +50,7 @@ impl Default for EditorApp {
     }
 }
 
-fn read_incoming_events(incoming_tx: mpsc::Sender<models::Event>) -> impl FnOnce() {
+fn read_incoming_events(incoming_tx: mpsc::Sender<models::SomeEvent>) -> impl FnOnce() {
     move || loop {
         let mut buffer = String::new();
         {
@@ -58,7 +58,7 @@ fn read_incoming_events(incoming_tx: mpsc::Sender<models::Event>) -> impl FnOnce
             match this {
                 Ok(_) => {
                     let event = {
-                        match serde_json::from_str::<models::Event>(&buffer) {
+                        match serde_json::from_str::<models::SomeEvent>(&buffer) {
                             Ok(event) => event,
                             Err(error) => {
                                 panic!("error parsing JSON: «{}» in «{}»", &error, buffer)
@@ -73,7 +73,7 @@ fn read_incoming_events(incoming_tx: mpsc::Sender<models::Event>) -> impl FnOnce
     }
 }
 
-fn write_outgoing_events(outgoing_rx: mpsc::Receiver<models::Event>) -> impl FnOnce() {
+fn write_outgoing_events(outgoing_rx: mpsc::Receiver<models::SomeEvent>) -> impl FnOnce() {
     move || loop {
         match mpsc::Receiver::recv(&outgoing_rx) {
             Ok(msg) => msg.emit(),
@@ -97,9 +97,9 @@ impl EditorApp {
     pub(crate) fn save_active_file(&mut self) {
         match &self.buffer {
             Some(contents) => std::fs::write(&self.active_file.clone().unwrap(), contents).unwrap(),
-            None => models::Event::new(
+            None => models::SomeEvent::new(
                 models::Typ::DebugNoBufferToSave,
-                "no buffer to save".to_owned(),
+                vec!["no buffer to save".to_owned()],
                 0,
             )
             .emit(),
@@ -113,9 +113,9 @@ impl EditorApp {
             Ok(buffer) => self.buffer = Some(buffer),
             Err(err) => {
                 let serial_placeholder = 0;
-                models::Event::new(
+                models::SomeEvent::new(
                     models::Typ::ErrorSwitchToFile,
-                    err.to_string(),
+                    vec![err.to_string()],
                     serial_placeholder,
                 )
                 .emit()
@@ -136,21 +136,26 @@ impl EditorApp {
                 let msg = rx.recv().unwrap();
                 // let _msg_json = serde_json::to_string(&msg).unwrap();
                 match msg {
-                    models::Event {
+                    models::SomeEvent {
                         typ: models::Typ::OpenFileCommand,
-                        data: path,
+                        data: paths,
                         serial: _,
                     } => {
-                        *available_files.lock().unwrap() = vec![std::path::PathBuf::from(path)];
+                        // convert pathbufs to strings
+                        let pathbufs = paths
+                            .iter()
+                            .map(|path| std::path::PathBuf::from(path))
+                            .collect();
+                        *available_files.lock().unwrap() = pathbufs;
                     }
-                    models::Event {
+                    models::SomeEvent {
                         typ: _,
                         data: _,
                         serial: _,
                     } => {
-                        models::Event::new(
+                        models::SomeEvent::new(
                             models::Typ::DebugGuiGotMessage,
-                            "got something unknown!".to_owned(),
+                            vec!["got something unknown!".to_owned()],
                             *serial.lock().unwrap(),
                         )
                         .emit();
@@ -181,9 +186,9 @@ impl eframe::App for EditorApp {
                         self.open_files.insert(0, path.to_owned());
                         self.open_files = self.open_files.clone().into_iter().unique().collect();
                         self.switch_to_file(&path.to_string());
-                        let event = models::Event::new(
+                        let event = models::SomeEvent::new(
                             models::Typ::GuiEvent,
-                            "switch-to-file".to_owned(),
+                            vec!["switch-to-file".to_owned()],
                             0,
                         );
                         self.outgoing_tx.send(event).unwrap();
@@ -249,9 +254,9 @@ impl eframe::App for EditorApp {
                             Ok(contents) => contents.clone(),
                             Err(err) => {
                                 let serial_placeholder = 0;
-                                models::Event::new(
+                                models::SomeEvent::new(
                                     models::Typ::Error,
-                                    err.to_string(),
+                                    vec![err.to_string()],
                                     serial_placeholder,
                                 )
                                 .emit();
@@ -259,9 +264,9 @@ impl eframe::App for EditorApp {
                                 // externally deleted while the app is running,
                                 // but it does happen when the saved state
                                 // references a file which doesn't exist
-                                models::Event::new(
+                                models::SomeEvent::new(
                                     models::Typ::ErrorReadingFile,
-                                    path.to_owned(),
+                                    vec![path.to_owned()],
                                     0,
                                 )
                                 .emit();

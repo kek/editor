@@ -64,10 +64,10 @@ defmodule Editor.GUI do
     GenServer.call(gui, {:output, data})
   end
 
-  def open_file(path), do: open_file(__MODULE__, path)
+  def set_available_files(paths), do: set_available_files(__MODULE__, paths)
 
-  def open_file(gui, path) do
-    GenServer.call(gui, {:open_file, path})
+  def set_available_files(gui, paths) do
+    GenServer.call(gui, {:set_available_files, paths})
   end
 
   def quit, do: quit(__MODULE__)
@@ -79,8 +79,8 @@ defmodule Editor.GUI do
     {:reply, :ok, %{state | serial: serial + 1}}
   end
 
-  def handle_call({:open_file, path}, _from, %{port: port, serial: serial} = state) do
-    message = Editor.NIF.open_file_command_json(path, serial)
+  def handle_call({:set_available_files, paths}, _from, %{port: port, serial: serial} = state) do
+    message = Editor.NIF.set_available_files_json(paths, serial)
     send(port, {self(), {:command, "#{message}\n"}})
     {:reply, :ok, %{state | serial: serial + 1}}
   end
