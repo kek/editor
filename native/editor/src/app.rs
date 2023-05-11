@@ -1,4 +1,5 @@
-use super::models;
+use crate::event::{EditorEvent, EventType};
+
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::{self, io, thread};
@@ -15,9 +16,9 @@ pub struct EditorApp {
     #[serde(skip)]
     pub(crate) available_files: Arc<Mutex<Vec<std::path::PathBuf>>>,
     #[serde(skip)]
-    pub(crate) outgoing_tx: mpsc::Sender<models::EditorEvent>,
+    pub(crate) outgoing_tx: mpsc::Sender<EditorEvent>,
     #[serde(skip)]
-    pub(crate) incoming_rx: Arc<Mutex<mpsc::Receiver<models::EditorEvent>>>,
+    pub(crate) incoming_rx: Arc<Mutex<mpsc::Receiver<EditorEvent>>>,
     #[serde(skip)]
     pub(crate) complete: bool,
     pub(crate) event_count: Arc<Mutex<i64>>,
@@ -28,8 +29,8 @@ impl Default for EditorApp {
     fn default() -> Self {
         let paths = [];
         let files = Arc::new(Mutex::new(file_list()));
-        let (outgoing_tx, outgoing_rx) = mpsc::channel::<models::EditorEvent>();
-        let (incoming_tx, incoming_rx) = mpsc::channel::<models::EditorEvent>();
+        let (outgoing_tx, outgoing_rx) = mpsc::channel::<EditorEvent>();
+        let (incoming_tx, incoming_rx) = mpsc::channel::<EditorEvent>();
 
         thread::spawn(read_incoming_events(incoming_tx));
         thread::spawn(write_outgoing_events(outgoing_rx));
@@ -49,7 +50,7 @@ impl Default for EditorApp {
     }
 }
 
-fn read_incoming_events(incoming_tx: mpsc::Sender<models::EditorEvent>) -> impl FnOnce() {
+fn read_incoming_events(incoming_tx: mpsc::Sender<EditorEvent>) -> impl FnOnce() {
     move || loop {
         let mut buffer = String::new();
         {
@@ -57,7 +58,7 @@ fn read_incoming_events(incoming_tx: mpsc::Sender<models::EditorEvent>) -> impl 
             match this {
                 Ok(_) => {
                     let event = {
-                        match serde_json::from_str::<models::EditorEvent>(&buffer) {
+                        match serde_json::from_str::<EditorEvent>(&buffer) {
                             Ok(event) => event,
                             Err(error) => {
                                 panic!("error parsing JSON: «{}» in «{}»", &error, buffer)
@@ -72,7 +73,7 @@ fn read_incoming_events(incoming_tx: mpsc::Sender<models::EditorEvent>) -> impl 
     }
 }
 
-fn write_outgoing_events(outgoing_rx: mpsc::Receiver<models::EditorEvent>) -> impl FnOnce() {
+fn write_outgoing_events(outgoing_rx: mpsc::Receiver<EditorEvent>) -> impl FnOnce() {
     move || loop {
         match mpsc::Receiver::recv(&outgoing_rx) {
             Ok(msg) => msg.emit(),
@@ -100,7 +101,7 @@ impl EditorApp {
         //     Some(contents) => std::fs::write(&path, contents).unwrap(),
         //     None => {
         //         self.send_event(
-        //             models::Typ::DebugNoBufferToSave,
+        //             EventType::DebugNoBufferToSave,
         //             vec!["no buffer to save".to_owned()],
         //         );
         //     }
@@ -113,7 +114,7 @@ impl EditorApp {
     // match std::fs::read_to_string(&self.active_file.clone().unwrap()) {
     //     Ok(buffer) => self.buffer = Some(buffer),
     //     Err(err) => {
-    //         self.send_event(models::Typ::ErrorSwitchToFile, vec![err.to_string()]);
+    //         self.send_event(EventType::ErrorSwitchToFile, vec![err.to_string()]);
     //     }
     // }
     // }
@@ -133,8 +134,8 @@ impl EditorApp {
                 let msg = rx.recv().unwrap();
                 // let _msg_json = serde_json::to_string(&msg).unwrap();
                 match msg {
-                    models::EditorEvent {
-                        typ: models::Typ::SetAvailableFilesCommand,
+                    EditorEvent {
+                        typ: EventType::SetAvailableFilesCommand,
                         data: paths,
                         serial: _,
                     } => {
@@ -144,8 +145,8 @@ impl EditorApp {
                             .collect();
                         *available_files.lock().unwrap() = pathbufs;
                     }
-                    models::EditorEvent {
-                        typ: models::Typ::OpenFileEvent,
+                    EditorEvent {
+                        typ: EventType::OpenFileEvent,
                         data: paths,
                         serial: _,
                     } => {
@@ -160,13 +161,13 @@ impl EditorApp {
                             }
                         }
                     }
-                    models::EditorEvent {
+                    EditorEvent {
                         typ: _,
                         data: _,
                         serial: _,
                     } => {
                         send_event_selfless(
-                            models::Typ::DebugGuiGotMessage,
+                            EventType::DebugGuiGotMessage,
                             vec!["got something unknown!".to_owned()],
                             &serial,
                             &tx,
@@ -179,18 +180,18 @@ impl EditorApp {
         }
     }
 
-    fn send_event(&mut self, typ: models::Typ, data: Vec<String>) {
+    fn send_event(&mut self, typ: EventType, data: Vec<String>) {
         send_event_selfless(typ, data, &self.serial, &self.outgoing_tx);
     }
 }
 
 fn send_event_selfless(
-    typ: models::Typ,
+    typ: EventType,
     data: Vec<String>,
     serial: &Arc<Mutex<i64>>,
-    tx: &mpsc::Sender<models::EditorEvent>,
+    tx: &mpsc::Sender<EditorEvent>,
 ) {
-    let debug_event = models::EditorEvent::new(typ, data, *serial.lock().unwrap());
+    let debug_event = EditorEvent::new(typ, data, *serial.lock().unwrap());
     tx.send(debug_event).unwrap();
     *serial.lock().unwrap() += 1;
 }
@@ -209,7 +210,7 @@ impl eframe::App for EditorApp {
                     let path = file.as_path().to_str().unwrap();
                     let file_name = file.file_name().unwrap().to_str().unwrap();
                     if ui.button(file_name).clicked() {
-                        self.send_event(models::Typ::ClickFileEvent, vec![path.to_owned()]);
+                        self.send_event(EventType::ClickFileEvent, vec![path.to_owned()]);
                     }
                 });
             });
@@ -279,7 +280,7 @@ impl eframe::App for EditorApp {
                         Ok(contents) => contents.clone(),
                         Err(err) => {
                             self.send_event(
-                                models::Typ::ErrorReadingFile,
+                                EventType::ErrorReadingFile,
                                 vec![path1.to_string(), err.to_string()],
                             );
                             "read error".to_owned()

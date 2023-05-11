@@ -1,5 +1,6 @@
+use event::{EditorEvent, EventType};
 mod app;
-mod models;
+mod event;
 
 fn main() -> () {
     eframe::run_native(
@@ -8,11 +9,6 @@ fn main() -> () {
         Box::new(|cc| Box::new(app::EditorApp::new(cc))),
     )
     .unwrap();
-    let serial_placeholder = 0;
-    models::EditorEvent::new(
-        models::Typ::Exit,
-        vec!["byebye".to_owned()],
-        serial_placeholder,
-    )
-    .emit();
+    let serial = -1;
+    EditorEvent::new(EventType::Exit, vec!["byebye".to_owned()], serial).emit();
 }

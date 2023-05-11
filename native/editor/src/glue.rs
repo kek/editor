@@ -1,5 +1,5 @@
-mod models;
-
+mod event;
+use crate::event::{EditorEvent, EventType};
 use rustler::{
     init, nif, Encoder, Env, JobSpawner, LocalPid, OwnedEnv, ResourceArc, Term, ThreadSpawner,
 };
@@ -66,8 +66,8 @@ fn read_resource(resource: ResourceArc<TestResource<i64>>) -> i64 {
 
 #[nif]
 fn set_available_files_json(path: Vec<String>, serial: i64) -> String {
-    serde_json::to_string(&models::EditorEvent::new(
-        models::Typ::SetAvailableFilesCommand,
+    serde_json::to_string(&EditorEvent::new(
+        EventType::SetAvailableFilesCommand,
         path,
         serial,
     ))
@@ -76,8 +76,8 @@ fn set_available_files_json(path: Vec<String>, serial: i64) -> String {
 
 #[nif]
 fn open_file_json(path: String, serial: i64) -> String {
-    serde_json::to_string(&models::EditorEvent::new(
-        models::Typ::OpenFileEvent,
+    serde_json::to_string(&EditorEvent::new(
+        EventType::OpenFileEvent,
         vec![path],
         serial,
     ))
@@ -85,7 +85,7 @@ fn open_file_json(path: String, serial: i64) -> String {
 }
 
 #[nif]
-fn decode_event(data: String) -> models::EditorEvent {
+fn decode_event(data: String) -> EditorEvent {
     match serde_json::from_str(&data) {
         Ok(event) => {
             println!("Decoded event data: {:?}", data);

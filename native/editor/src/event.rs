@@ -1,9 +1,8 @@
+use serde::{Deserialize, Serialize};
 use std::io::Write;
 
-use serde::{Deserialize, Serialize};
-
 #[derive(Serialize, Deserialize, rustler::NifTaggedEnum)]
-pub(crate) enum Typ {
+pub(crate) enum EventType {
     GuiEvent,
     DebugNoBufferToSave,
     ErrorSwitchToFile,
@@ -17,13 +16,13 @@ pub(crate) enum Typ {
 
 #[derive(Serialize, Deserialize, rustler::NifMap)]
 pub(crate) struct EditorEvent {
-    pub typ: Typ,
+    pub typ: EventType,
     pub data: Vec<String>,
     pub serial: i64,
 }
 
 impl EditorEvent {
-    pub(crate) fn new(typ: Typ, data: Vec<String>, serial: i64) -> Self {
+    pub(crate) fn new(typ: EventType, data: Vec<String>, serial: i64) -> Self {
         Self { typ, data, serial }
     }
 
