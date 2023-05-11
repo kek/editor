@@ -290,10 +290,11 @@ impl eframe::App for EditorApp {
 
                     let text_edit = egui::TextEdit::multiline(&mut text)
                         .code_editor()
-                        .desired_width(ui.available_width());
+                        .desired_width(ui.available_width())
+                        .desired_rows(20);
                     if ui.add(text_edit).changed {
-                        // self.buffer = Arc::new(Mutex::new(Some(text))); // instead of this, send a diff to the backend
-                        // self.save_active_file();
+                        self.buffer = Arc::new(Mutex::new(Some(text))); // instead of this, send a diff to the backend
+                                                                        // self.save_active_file();
                     }
                 });
             }
