@@ -10,7 +10,7 @@ pub struct EditorApp {
     pub(crate) open_files: Vec<String>,
     pub(crate) active_file: Arc<Mutex<Option<String>>>,
     #[serde(skip)]
-    pub(crate) buffer: Option<String>,
+    pub(crate) buffer: Arc<Mutex<Option<String>>>,
     #[serde(skip)]
     pub(crate) output: String,
     #[serde(skip)]
@@ -36,7 +36,7 @@ impl Default for EditorApp {
         thread::spawn(write_outgoing_events(outgoing_rx));
 
         Self {
-            buffer: None,
+            buffer: Arc::new(Mutex::new(None)),
             open_files: paths.to_vec(),
             active_file: Arc::new(Mutex::new(None)),
             output: "".to_owned(),
@@ -261,20 +261,12 @@ impl eframe::App for EditorApp {
             };
             ui.monospace(&self.output);
         });
-        let mutex = &self.active_file.clone();
-        let arc: Result<
-            std::sync::MutexGuard<Option<String>>,
-            std::sync::PoisonError<std::sync::MutexGuard<Option<String>>>,
-        > = mutex.lock();
-        let unw: std::sync::MutexGuard<Option<String>> = arc.unwrap();
-        let opt: Option<String> = unw.clone();
-
-        egui::CentralPanel::default().show(ctx, |ui| match opt {
-            None => {}
-            Some(path) => {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            if let Some(path) = (&self.active_file.clone()).lock().unwrap().clone() {
                 let path1 = path.clone();
-                self.buffer = if let Some(contents) = &self.buffer {
-                    Some(contents.to_string())
+
+                self.buffer = if let Some(contents) = self.buffer.clone().lock().unwrap().clone() {
+                    Arc::new(Mutex::new(Some(contents.to_string())))
                 } else {
                     let contents = match std::fs::read_to_string(path) {
                         Ok(contents) => contents.clone(),
@@ -286,21 +278,20 @@ impl eframe::App for EditorApp {
                             "read error".to_owned()
                         }
                     };
-                    Some(contents)
+                    Arc::new(Mutex::new(Some(contents)))
                 };
                 egui::ScrollArea::both().show(ui, |ui| {
-                    let mut text = match &mut self.buffer {
+                    let mut text = match self.buffer.clone().lock().unwrap().clone() {
                         Some(buffer) => buffer,
-                        None => "empty",
-                    }
-                    .to_owned();
+                        None => "empty".to_owned(),
+                    };
 
                     let text_edit = egui::TextEdit::multiline(&mut text)
                         .code_editor()
                         .desired_width(ui.available_width());
                     if ui.add(text_edit).changed {
-                        self.buffer = Some(text); // instead of this, send a diff to the backend
-                                                  // self.save_active_file();
+                        // self.buffer = Arc::new(Mutex::new(Some(text))); // instead of this, send a diff to the backend
+                        // self.save_active_file();
                     }
                 });
             }
