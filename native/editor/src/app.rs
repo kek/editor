@@ -7,7 +7,7 @@ use std::{self, io, thread};
 #[serde(default)]
 pub struct EditorApp {
     pub(crate) open_files: Vec<String>,
-    pub(crate) active_file: Option<String>,
+    pub(crate) active_file: Arc<Mutex<Option<String>>>,
     #[serde(skip)]
     pub(crate) buffer: Option<String>,
     #[serde(skip)]
@@ -37,7 +37,7 @@ impl Default for EditorApp {
         Self {
             buffer: None,
             open_files: paths.to_vec(),
-            active_file: None,
+            active_file: Arc::new(Mutex::new(None)),
             output: "".to_owned(),
             available_files: files,
             outgoing_tx,
@@ -94,33 +94,36 @@ impl EditorApp {
     }
 
     pub(crate) fn save_active_file(&mut self) {
-        match &self.buffer {
-            Some(contents) => std::fs::write(&self.active_file.clone().unwrap(), contents).unwrap(),
-            None => {
-                self.send_event(
-                    models::Typ::DebugNoBufferToSave,
-                    vec!["no buffer to save".to_owned()],
-                );
-            }
-        }
+        // let arc = self.active_file.clone();
+        // let path = arc.lock().unwrap();
+        // match &self.buffer {
+        //     Some(contents) => std::fs::write(&path, contents).unwrap(),
+        //     None => {
+        //         self.send_event(
+        //             models::Typ::DebugNoBufferToSave,
+        //             vec!["no buffer to save".to_owned()],
+        //         );
+        //     }
+        // }
     }
 
-    pub(crate) fn switch_to_file(&mut self, path: &String) {
-        self.save_active_file();
-        self.active_file = Some(path.clone());
-        match std::fs::read_to_string(&self.active_file.clone().unwrap()) {
-            Ok(buffer) => self.buffer = Some(buffer),
-            Err(err) => {
-                self.send_event(models::Typ::ErrorSwitchToFile, vec![err.to_string()]);
-            }
-        }
-    }
+    // pub(crate) fn switch_to_file(&mut self, path: &String) {
+    // self.save_active_file();
+    // self.active_file = Some(path.clone());
+    // match std::fs::read_to_string(&self.active_file.clone().unwrap()) {
+    //     Ok(buffer) => self.buffer = Some(buffer),
+    //     Err(err) => {
+    //         self.send_event(models::Typ::ErrorSwitchToFile, vec![err.to_string()]);
+    //     }
+    // }
+    // }
 
     fn listen_for_events(self: &mut EditorApp, ctx: &egui::Context) {
         if !self.complete {
             let mutex = self.incoming_rx.clone();
             self.complete = true;
             let event_count = self.event_count.clone();
+            let active_file = self.active_file.clone();
             let available_files = self.available_files.clone();
             let signal = ctx.clone();
             let serial = self.serial.clone();
@@ -140,6 +143,22 @@ impl EditorApp {
                             .map(|path| std::path::PathBuf::from(path))
                             .collect();
                         *available_files.lock().unwrap() = pathbufs;
+                    }
+                    models::EditorEvent {
+                        typ: models::Typ::OpenFileEvent,
+                        data: paths,
+                        serial: _,
+                    } => {
+                        let f = paths[0].clone();
+                        *active_file.lock().unwrap() = Some(f.clone());
+                        match std::fs::read_to_string(f) {
+                            Ok(_buffer) => {
+                                // set buffer
+                            }
+                            Err(_err) => {
+                                // send error
+                            }
+                        }
                     }
                     models::EditorEvent {
                         typ: _,
@@ -197,32 +216,32 @@ impl eframe::App for EditorApp {
         });
 
         egui::TopBottomPanel::top("file_contents").show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                for path in self.open_files.clone().into_iter() {
-                    let button = match &self.active_file {
-                        Some(active_file) => {
-                            if path == active_file.clone() {
-                                let button_text =
-                                    egui::WidgetText::from(&path).color(egui::Color32::WHITE);
-                                egui::Button::new(button_text)
-                                    .fill(egui::Color32::from_rgb(150, 150, 175))
-                            } else {
-                                egui::Button::new(&path)
-                            }
-                        }
-                        None => egui::Button::new(&path),
-                    };
-                    let button = ui.add(button);
-                    if button.clicked() {
-                        self.switch_to_file(&path);
-                    }
-                    if button.clicked_by(egui::PointerButton::Secondary) {
-                        self.open_files.retain(|p| p.to_string() != path);
-                        if self.active_file == Some(path) {
-                            self.active_file = None;
-                            self.buffer = None;
-                        }
-                    }
+            ui.horizontal(|_ui| {
+                for _path in self.open_files.clone().into_iter() {
+                    // let button = match &self.active_file {
+                    //     Some(active_file) => {
+                    //         if path == active_file.clone() {
+                    //             let button_text =
+                    //                 egui::WidgetText::from(&path).color(egui::Color32::WHITE);
+                    //             egui::Button::new(button_text)
+                    //                 .fill(egui::Color32::from_rgb(150, 150, 175))
+                    //         } else {
+                    //             egui::Button::new(&path)
+                    //         }
+                    //     }
+                    //     None => egui::Button::new(&path),
+                    // };
+                    // let button = ui.add(button);
+                    // if button.clicked() {
+                    //     self.switch_to_file(&path);
+                    // }
+                    // if button.clicked_by(egui::PointerButton::Secondary) {
+                    //     self.open_files.retain(|p| p.to_string() != path);
+                    //     if self.active_file == Some(path) {
+                    //         self.active_file = None;
+                    //         self.buffer = None;
+                    //     }
+                    // }
                 }
             });
         });
@@ -241,10 +260,18 @@ impl eframe::App for EditorApp {
             };
             ui.monospace(&self.output);
         });
+        let mutex = &self.active_file.clone();
+        let arc: Result<
+            std::sync::MutexGuard<Option<String>>,
+            std::sync::PoisonError<std::sync::MutexGuard<Option<String>>>,
+        > = mutex.lock();
+        let unw: std::sync::MutexGuard<Option<String>> = arc.unwrap();
+        let opt: Option<String> = unw.clone();
 
-        egui::CentralPanel::default().show(ctx, |ui| match &self.active_file {
+        egui::CentralPanel::default().show(ctx, |ui| match opt {
             None => {}
             Some(path) => {
+                let path1 = path.clone();
                 self.buffer = if let Some(contents) = &self.buffer {
                     Some(contents.to_string())
                 } else {
@@ -253,7 +280,7 @@ impl eframe::App for EditorApp {
                         Err(err) => {
                             self.send_event(
                                 models::Typ::ErrorReadingFile,
-                                vec![path.to_string(), err.to_string()],
+                                vec![path1.to_string(), err.to_string()],
                             );
                             "read error".to_owned()
                         }

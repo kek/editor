@@ -75,6 +75,16 @@ fn set_available_files_json(path: Vec<String>, serial: i64) -> String {
 }
 
 #[nif]
+fn open_file_json(path: String, serial: i64) -> String {
+    serde_json::to_string(&models::EditorEvent::new(
+        models::Typ::OpenFileEvent,
+        vec![path],
+        serial,
+    ))
+    .unwrap()
+}
+
+#[nif]
 fn decode_event(data: String) -> models::EditorEvent {
     match serde_json::from_str(&data) {
         Ok(event) => {
@@ -94,7 +104,8 @@ init!(
         make_channel,
         send_on_channel,
         decode_event,
-        set_available_files_json
+        set_available_files_json,
+        open_file_json
     ],
     load = load
 );

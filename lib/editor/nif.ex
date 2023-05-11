@@ -47,5 +47,7 @@ defmodule Editor.NIF do
 
   def set_available_files_json(_path, _serial), do: :erlang.nif_error(:nif_not_loaded)
 
+  def open_file_json(_path, _serial), do: :erlang.nif_error(:nif_not_loaded)
+
   def decode_event(_data), do: :erlang.nif_error(:nif_not_loaded)
 end

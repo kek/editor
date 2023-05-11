@@ -12,6 +12,7 @@ pub(crate) enum Typ {
     Exit,
     SetAvailableFilesCommand,
     ClickFileEvent,
+    OpenFileEvent,
 }
 
 #[derive(Serialize, Deserialize, rustler::NifMap)]

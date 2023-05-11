@@ -45,6 +45,12 @@ defmodule Editor.GUI do
             Logger.debug("GUI exited")
             [{:stop, :shutdown, state}]
 
+          %{typ: :click_file_event, data: [path]} ->
+            message = Editor.NIF.open_file_json(path, state.serial)
+            send(state.port, {self(), {:command, "#{message}\n"}})
+            Logger.debug("GUI clicked file: #{inspect(path)}")
+            [{:noreply, %{state | serial: state.serial + 1}}]
+
           something_else ->
             Logger.error("Unknown event from GUI: #{inspect(something_else)}")
             []
