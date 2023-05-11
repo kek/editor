@@ -7,7 +7,7 @@ version = "0.1.0"
 [lib]
 crate-type = ["cdylib"]
 name = "editor"
-path = "src/nifs.rs"
+path = "src/glue.rs"
 
 [[bin]]
 name = "editor"
