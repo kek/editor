@@ -298,8 +298,8 @@ impl eframe::App for EditorApp {
                         .code_editor()
                         .desired_width(ui.available_width());
                     if ui.add(text_edit).changed {
-                        self.buffer = Some(text);
-                        self.save_active_file();
+                        self.buffer = Some(text); // instead of this, send a diff to the backend
+                                                  // self.save_active_file();
                     }
                 });
             }
