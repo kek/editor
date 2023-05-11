@@ -66,8 +66,8 @@ fn read_resource(resource: ResourceArc<TestResource<i64>>) -> i64 {
 
 #[nif]
 fn set_available_files_json(path: Vec<String>, serial: i64) -> String {
-    serde_json::to_string(&models::SomeEvent::new(
-        models::Typ::OpenFileCommand,
+    serde_json::to_string(&models::EditorEvent::new(
+        models::Typ::SetAvailableFilesCommand,
         path,
         serial,
     ))
@@ -75,7 +75,7 @@ fn set_available_files_json(path: Vec<String>, serial: i64) -> String {
 }
 
 #[nif]
-fn decode_event(data: String) -> models::SomeEvent {
+fn decode_event(data: String) -> models::EditorEvent {
     match serde_json::from_str(&data) {
         Ok(event) => {
             println!("Decoded event data: {:?}", data);

@@ -9,20 +9,19 @@ pub(crate) enum Typ {
     ErrorSwitchToFile,
     DebugGuiGotMessage,
     ErrorReadingFile,
-    Error,
-    Event,
     Exit,
-    OpenFileCommand,
+    SetAvailableFilesCommand,
+    ClickFileEvent,
 }
 
 #[derive(Serialize, Deserialize, rustler::NifMap)]
-pub(crate) struct SomeEvent {
+pub(crate) struct EditorEvent {
     pub typ: Typ,
     pub data: Vec<String>,
     pub serial: i64,
 }
 
-impl SomeEvent {
+impl EditorEvent {
     pub(crate) fn new(typ: Typ, data: Vec<String>, serial: i64) -> Self {
         Self { typ, data, serial }
     }

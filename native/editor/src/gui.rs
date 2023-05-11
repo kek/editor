@@ -9,7 +9,7 @@ fn main() -> () {
     )
     .unwrap();
     let serial_placeholder = 0;
-    models::SomeEvent::new(
+    models::EditorEvent::new(
         models::Typ::Exit,
         vec!["byebye".to_owned()],
         serial_placeholder,
