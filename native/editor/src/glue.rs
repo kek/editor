@@ -77,8 +77,18 @@ fn set_available_files_json(path: Vec<String>, serial: i64) -> String {
 #[nif]
 fn open_file_json(path: String, serial: i64) -> String {
     serde_json::to_string(&EditorEvent::new(
-        EventType::OpenFileEvent,
+        EventType::OpenFileCommand,
         vec![path],
+        serial,
+    ))
+    .unwrap()
+}
+
+#[nif]
+fn set_buffer_json(buffer: String, serial: i64) -> String {
+    serde_json::to_string(&EditorEvent::new(
+        EventType::SetBufferCommand,
+        vec![buffer],
         serial,
     ))
     .unwrap()
@@ -105,7 +115,8 @@ init!(
         send_on_channel,
         decode_event,
         set_available_files_json,
-        open_file_json
+        open_file_json,
+        set_buffer_json,
     ],
     load = load
 );

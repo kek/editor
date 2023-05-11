@@ -46,8 +46,7 @@ defmodule Editor.GUI do
             [{:stop, :shutdown, state}]
 
           %{typ: :click_file_event, data: [path]} ->
-            message = Editor.Glue.open_file_json(path, state.serial)
-            send(state.port, {self(), {:command, "#{message}\n"}})
+            send_message(&Editor.Glue.open_file_json/2, path, state)
             Logger.debug("GUI clicked file: #{inspect(path)}")
             [{:noreply, %{state | serial: state.serial + 1}}]
 
@@ -74,11 +73,23 @@ defmodule Editor.GUI do
     GenServer.call(gui, {:set_available_files, paths})
   end
 
+  def set_buffer(buffer), do: set_buffer(__MODULE__, buffer)
+
+  def set_buffer(gui, buffer) do
+    GenServer.call(gui, {:set_buffer, buffer})
+  end
+
   def quit, do: quit(__MODULE__)
   def quit(gui), do: GenServer.call(gui, {:quit})
 
   def handle_call({:set_available_files, paths}, _from, %{port: port, serial: serial} = state) do
     message = Editor.Glue.set_available_files_json(paths, serial)
+    send(port, {self(), {:command, "#{message}\n"}})
+    {:reply, :ok, %{state | serial: serial + 1}}
+  end
+
+  def handle_call({:set_buffer, contents}, _from, %{port: port, serial: serial} = state) do
+    message = Editor.Glue.set_buffer_json(contents, state.serial)
     send(port, {self(), {:command, "#{message}\n"}})
     {:reply, :ok, %{state | serial: serial + 1}}
   end
@@ -92,5 +103,10 @@ defmodule Editor.GUI do
     Logger.debug("Terminating GUI: #{inspect(reason)}")
     # Port.close(state.port)
     System.stop(0)
+  end
+
+  defp send_message(fun, arg, state) do
+    message = fun.(arg, state.serial)
+    send(state.port, {self(), {:command, "#{message}\n"}})
   end
 end

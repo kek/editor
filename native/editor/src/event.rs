@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 
-#[derive(Serialize, Deserialize, rustler::NifTaggedEnum)]
+#[derive(Serialize, Deserialize, rustler::NifTaggedEnum, Debug)]
 pub(crate) enum EventType {
     GuiEvent,
     DebugNoBufferToSave,
@@ -11,7 +11,9 @@ pub(crate) enum EventType {
     Exit,
     SetAvailableFilesCommand,
     ClickFileEvent,
-    OpenFileEvent,
+    OpenFileCommand,
+    SetBufferCommand,
+    DebugGotUnknownMessage,
 }
 
 #[derive(Serialize, Deserialize, rustler::NifMap)]

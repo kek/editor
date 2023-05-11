@@ -1,5 +1,6 @@
 use crate::event::{EditorEvent, EventType};
 
+use std::fmt::format;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::{self, io, thread};
@@ -8,6 +9,7 @@ use std::{self, io, thread};
 #[serde(default)]
 pub struct EditorApp {
     pub(crate) open_files: Vec<String>,
+    #[serde(skip)]
     pub(crate) active_file: Arc<Mutex<Option<String>>>,
     #[serde(skip)]
     pub(crate) buffer: Arc<Mutex<Option<String>>>,
@@ -94,19 +96,19 @@ impl EditorApp {
         Default::default()
     }
 
-    pub(crate) fn save_active_file(&mut self) {
-        // let arc = self.active_file.clone();
-        // let path = arc.lock().unwrap();
-        // match &self.buffer {
-        //     Some(contents) => std::fs::write(&path, contents).unwrap(),
-        //     None => {
-        //         self.send_event(
-        //             EventType::DebugNoBufferToSave,
-        //             vec!["no buffer to save".to_owned()],
-        //         );
-        //     }
-        // }
-    }
+    // pub(crate) fn save_active_file(&mut self) {
+    // let arc = self.active_file.clone();
+    // let path = arc.lock().unwrap();
+    // match &self.buffer {
+    //     Some(contents) => std::fs::write(&path, contents).unwrap(),
+    //     None => {
+    //         self.send_event(
+    //             EventType::DebugNoBufferToSave,
+    //             vec!["no buffer to save".to_owned()],
+    //         );
+    //     }
+    // }
+    // }
 
     // pub(crate) fn switch_to_file(&mut self, path: &String) {
     // self.save_active_file();
@@ -128,7 +130,8 @@ impl EditorApp {
             let available_files = self.available_files.clone();
             let signal = ctx.clone();
             let serial = self.serial.clone();
-            let tx = self.outgoing_tx.clone();
+            let buffer = self.buffer.clone();
+            let outgoing_tx = self.outgoing_tx.clone();
             thread::spawn(move || loop {
                 let rx = &mutex.lock().unwrap();
                 let msg = rx.recv().unwrap();
@@ -146,31 +149,47 @@ impl EditorApp {
                         *available_files.lock().unwrap() = pathbufs;
                     }
                     EditorEvent {
-                        typ: EventType::OpenFileEvent,
-                        data: paths,
+                        typ: EventType::OpenFileCommand,
+                        data: one_path,
                         serial: _,
                     } => {
-                        let f = paths[0].clone();
-                        *active_file.lock().unwrap() = Some(f.clone());
-                        match std::fs::read_to_string(f) {
-                            Ok(_buffer) => {
-                                // set buffer
+                        let path = one_path[0].clone();
+                        *active_file.lock().unwrap() = Some(path.clone());
+                        match std::fs::read_to_string(path) {
+                            Ok(contents) => {
+                                *buffer.lock().unwrap() = Some(contents);
                             }
-                            Err(_err) => {
-                                // send error
-                            }
+                            Err(err) => send_event_selfless(
+                                EventType::ErrorReadingFile,
+                                vec![err.to_string()],
+                                &serial,
+                                &outgoing_tx,
+                            ),
                         }
                     }
                     EditorEvent {
-                        typ: _,
-                        data: _,
+                        typ: EventType::SetBufferCommand,
+                        data: contents,
                         serial: _,
                     } => {
+                        *buffer.lock().unwrap() = Some(contents[0].clone());
+                    }
+                    EditorEvent {
+                        typ,
+                        data,
+                        serial: zerial,
+                    } => {
+                        let message = format(format_args!(
+                            "{:?}, {:?}, {:?}",
+                            typ,
+                            data.join(", "),
+                            zerial
+                        ));
                         send_event_selfless(
-                            EventType::DebugGuiGotMessage,
-                            vec!["got something unknown!".to_owned()],
+                            EventType::DebugGotUnknownMessage,
+                            vec![message],
                             &serial,
-                            &tx,
+                            &outgoing_tx,
                         );
                     }
                 };
@@ -262,24 +281,7 @@ impl eframe::App for EditorApp {
             ui.monospace(&self.output);
         });
         egui::CentralPanel::default().show(ctx, |ui| {
-            if let Some(path) = (&self.active_file.clone()).lock().unwrap().clone() {
-                let path1 = path.clone();
-
-                self.buffer = if let Some(contents) = self.buffer.clone().lock().unwrap().clone() {
-                    Arc::new(Mutex::new(Some(contents.to_string())))
-                } else {
-                    let contents = match std::fs::read_to_string(path) {
-                        Ok(contents) => contents.clone(),
-                        Err(err) => {
-                            self.send_event(
-                                EventType::ErrorReadingFile,
-                                vec![path1.to_string(), err.to_string()],
-                            );
-                            "read error".to_owned()
-                        }
-                    };
-                    Arc::new(Mutex::new(Some(contents)))
-                };
+            if let Some(_path) = (&self.active_file.clone()).lock().unwrap().clone() {
                 egui::ScrollArea::both().show(ui, |ui| {
                     let mut text = match self.buffer.clone().lock().unwrap().clone() {
                         Some(buffer) => buffer,
@@ -299,7 +301,7 @@ impl eframe::App for EditorApp {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        self.save_active_file();
+        // self.save_active_file();
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
 }
