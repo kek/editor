@@ -1,6 +1,6 @@
-defmodule Editor.NIF do
+defmodule Editor.Glue do
   @moduledoc """
-  Documentation for `Editor.NIF`.
+  Documentation for `Editor.Glue`.
   """
   use Rustler, otp_app: :editor, crate: "editor"
 
@@ -8,7 +8,7 @@ defmodule Editor.NIF do
   ## Examples
 
     ```
-    iex> Editor.NIF.spawn_thread(self())
+    iex> Editor.Glue.spawn_thread(self())
     {}
     iex> receive do msg -> msg end
     "Hello world"
@@ -23,8 +23,8 @@ defmodule Editor.NIF do
   ## Examples
 
     ```
-    iex> resource = Editor.NIF.make_number(42)
-    iex> Editor.NIF.read_resource(resource)
+    iex> resource = Editor.Glue.make_number(42)
+    iex> Editor.Glue.read_resource(resource)
     42
     ```
   """
@@ -36,8 +36,8 @@ defmodule Editor.NIF do
   ## Examples
 
     ```
-    iex> channel = Editor.NIF.make_channel(self())
-    iex> Editor.NIF.send_on_channel(channel, 101)
+    iex> channel = Editor.Glue.make_channel(self())
+    iex> Editor.Glue.send_on_channel(channel, 101)
     {}
     iex> receive do msg -> msg end
     101

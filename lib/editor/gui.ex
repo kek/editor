@@ -15,7 +15,7 @@ defmodule Editor.GUI do
         Port.monitor(port)
         Process.link(port)
         paths = ["mix.exs", "Cargo.toml", "README.md"]
-        message = Editor.NIF.set_available_files_json(paths, 0)
+        message = Editor.Glue.set_available_files_json(paths, 0)
         send(port, {self(), {:command, "#{message}\n"}})
 
         port
@@ -37,7 +37,7 @@ defmodule Editor.GUI do
       |> String.split("\n")
       |> Enum.reject(&(&1 == ""))
       |> Enum.flat_map(fn line ->
-        result = Editor.NIF.decode_event(line)
+        result = Editor.Glue.decode_event(line)
         Logger.debug("Decoded GUI event: #{inspect(result)}")
 
         case result do
@@ -46,7 +46,7 @@ defmodule Editor.GUI do
             [{:stop, :shutdown, state}]
 
           %{typ: :click_file_event, data: [path]} ->
-            message = Editor.NIF.open_file_json(path, state.serial)
+            message = Editor.Glue.open_file_json(path, state.serial)
             send(state.port, {self(), {:command, "#{message}\n"}})
             Logger.debug("GUI clicked file: #{inspect(path)}")
             [{:noreply, %{state | serial: state.serial + 1}}]
@@ -78,7 +78,7 @@ defmodule Editor.GUI do
   def quit(gui), do: GenServer.call(gui, {:quit})
 
   def handle_call({:set_available_files, paths}, _from, %{port: port, serial: serial} = state) do
-    message = Editor.NIF.set_available_files_json(paths, serial)
+    message = Editor.Glue.set_available_files_json(paths, serial)
     send(port, {self(), {:command, "#{message}\n"}})
     {:reply, :ok, %{state | serial: serial + 1}}
   end

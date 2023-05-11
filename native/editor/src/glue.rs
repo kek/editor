@@ -96,7 +96,7 @@ fn decode_event(data: String) -> models::EditorEvent {
 }
 
 init!(
-    "Elixir.Editor.NIF",
+    "Elixir.Editor.Glue",
     [
         spawn_thread,
         make_number,
