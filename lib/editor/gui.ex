@@ -67,7 +67,7 @@ defmodule Editor.GUI do
 
           %{typ: :buffer_changed, data: [contents]} ->
             Logger.debug("GUI changed buffer: #{inspect(contents)}")
-            File.write!(Path.join([state.dir, state.path]), contents)
+            File.write!(Path.join([state.dir, state.file]), contents)
             [{:noreply, state}]
 
           %{typ: :debug_message, data: messages} ->
