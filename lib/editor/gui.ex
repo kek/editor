@@ -71,8 +71,9 @@ defmodule Editor.GUI do
             [{:stop, :shutdown, state}]
 
           %{typ: :click_file_event, data: [file]} ->
-            if File.dir?(file) do
-              path = Path.join([state.dir, file])
+            path = Path.join([state.dir, file])
+
+            if File.dir?(path) do
               list_files(state.port, path)
               [{:noreply, %{state | dir: path}}]
             else
