@@ -75,10 +75,10 @@ fn set_available_files_json(path: Vec<String>, serial: i64) -> String {
 }
 
 #[nif]
-fn open_file_json(path: String, serial: i64) -> String {
+fn open_file_json(location: Vec<String>, serial: i64) -> String {
     serde_json::to_string(&EditorEvent::new(
         EventType::OpenFileCommand,
-        vec![path],
+        location,
         serial,
     ))
     .unwrap()

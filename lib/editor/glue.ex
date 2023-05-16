@@ -49,6 +49,6 @@ defmodule Editor.Glue do
 
   def set_available_files_json(_path, _serial), do: :erlang.nif_error(:nif_not_loaded)
 
-  def open_file_json(_path, _serial), do: :erlang.nif_error(:nif_not_loaded)
+  def open_file_json(_location, _serial), do: :erlang.nif_error(:nif_not_loaded)
   def set_buffer_json(_buffer, _serial), do: :erlang.nif_error(:nif_not_loaded)
 end

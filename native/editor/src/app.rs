@@ -5,12 +5,26 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::{self, io, thread};
 
+pub struct EditorFile {
+    dir: String,
+    name: String,
+}
+
+impl Clone for EditorFile {
+    fn clone(&self) -> Self {
+        Self {
+            dir: self.dir.clone(),
+            name: self.name.clone(),
+        }
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct EditorApp {
     pub(crate) open_files: Vec<String>,
     #[serde(skip)]
-    pub(crate) active_file: Arc<Mutex<Option<String>>>,
+    pub(crate) active_file: Arc<Mutex<Option<EditorFile>>>,
     #[serde(skip)]
     pub(crate) buffer: Arc<Mutex<Option<String>>>,
     #[serde(skip)]
@@ -123,8 +137,13 @@ impl EditorApp {
                         data: one_path,
                         serial: _,
                     } => {
-                        let path = one_path[0].clone();
-                        *active_file.lock().unwrap() = Some(path.clone());
+                        let dir = one_path[0].clone();
+                        let name = one_path[1].clone();
+                        *active_file.lock().unwrap() = Some(EditorFile {
+                            name: name.clone(),
+                            dir: dir.to_string(),
+                        });
+                        let path = format(format_args!("{}/{}", dir, name));
                         match std::fs::read_to_string(path) {
                             Ok(contents) => {
                                 send_event_selfless(
@@ -203,10 +222,8 @@ impl eframe::App for EditorApp {
                 let mutex = &self.available_files.clone();
                 let files = mutex.lock().unwrap();
                 files.iter().for_each(|file| {
-                    let path = file;
-                    let file_name = file;
-                    if ui.button(file_name).clicked() {
-                        self.send_event(EventType::ClickFileEvent, vec![path.to_owned()]);
+                    if ui.button(file).clicked() {
+                        self.send_event(EventType::ClickFileEvent, vec![file.to_owned()]);
                     }
                 });
             });
