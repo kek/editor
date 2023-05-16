@@ -13,6 +13,8 @@ defmodule Editor.GUI do
     port =
       if Mix.env() != :test do
         port = Port.open({:spawn, "priv/native/editor"}, [:binary])
+
+        # {busy_limits_msgq, {Low, High} | disabled}
         Port.monitor(port)
         Process.link(port)
         list_files(port, dir)

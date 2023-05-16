@@ -98,7 +98,7 @@ fn set_buffer_json(buffer: String, serial: i64) -> String {
 fn decode_event(data: String) -> EditorEvent {
     match serde_json::from_str(&data) {
         Ok(event) => {
-            println!("Decoded event data: {:?}", data);
+            // println!("Decoded event data: {:?}", data);
             event
         }
         Err(err) => panic!("Could not decode event: «{}« because «{}»", data, err),
