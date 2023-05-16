@@ -228,6 +228,9 @@ impl eframe::App for EditorApp {
         self.listen_for_events(ctx);
 
         egui::SidePanel::left("file_list").show(ctx, |ui| {
+            if ui.button("👆").clicked() {
+                self.send_event(EventType::NavigateUp, vec![]);
+            }
             egui::ScrollArea::vertical().show(ui, |ui| {
                 let mutex = &self.available_files.clone();
                 let files = mutex.lock().unwrap();

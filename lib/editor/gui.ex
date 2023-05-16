@@ -8,20 +8,26 @@ defmodule Editor.GUI do
 
   def init(:ok) do
     Logger.debug("Starting GUI on #{inspect(self())}")
+    dir = "."
 
     port =
       if Mix.env() != :test do
         port = Port.open({:spawn, "priv/native/editor"}, [:binary])
         Port.monitor(port)
         Process.link(port)
-        paths = ["mix.exs", "Cargo.toml", "README.md"]
-        message = Editor.Glue.set_available_files_json(paths, 0)
-        send(port, {self(), {:command, "#{message}\n"}})
-
+        list_files(port, dir)
         port
       end
 
-    {:ok, %{port: port, serial: 0, path: nil}}
+    {:ok, %{port: port, serial: 0, file: nil, dir: dir}}
+  end
+
+  defp list_files(port, dir) do
+    glob = Path.join([dir, "*"])
+    paths = Path.wildcard(glob)
+    Logger.debug("Listing files: #{inspect(paths)}")
+    message = Editor.Glue.set_available_files_json(paths, 0)
+    send(port, {self(), {:command, "#{message}\n"}})
   end
 
   def handle_info({:DOWN, _, :port, _, _}, state) do
@@ -40,24 +46,37 @@ defmodule Editor.GUI do
         result = Editor.Glue.decode_event(line)
         Logger.debug("Decoded GUI event: #{inspect(result)}")
 
+        Logger.debug("GUI state: #{inspect(state)}")
+
         case result do
           %{typ: :exit} ->
             Logger.debug("GUI exited")
             [{:stop, :shutdown, state}]
 
-          %{typ: :click_file_event, data: [path]} ->
-            serial = send_message(&Editor.Glue.open_file_json/2, path, state)
-            Logger.debug("GUI clicked file: #{inspect(path)}")
-            [{:noreply, %{state | serial: serial, path: path}}]
+          %{typ: :click_file_event, data: [file]} ->
+            if File.dir?(file) do
+              list_files(state.port, file)
+              [{:noreply, %{state | dir: Path.join([state.dir, file])}}]
+            else
+              Logger.debug("GUI clicked file: #{inspect(file)}")
+              serial = send_message(&Editor.Glue.open_file_json/2, file, state)
+              [{:noreply, %{state | serial: serial, file: file}}]
+            end
 
           %{typ: :buffer_changed, data: [contents]} ->
             Logger.debug("GUI changed buffer: #{inspect(contents)}")
-            File.write!(state.path, contents)
+            File.write!(Path.join([state.dir, state.path]), contents)
             [{:noreply, state}]
 
           %{typ: :debug_message, data: messages} ->
             Logger.debug("GUI debug message: #{inspect(messages)}")
             [{:noreply, state}]
+
+          %{typ: :navigate_up} ->
+            Logger.debug("GUI navigate up")
+            parent = Path.dirname(state.dir)
+            list_files(state.port, Path.dirname(parent))
+            [{:noreply, %{state | dir: Path.dirname(parent)}}]
 
           something_else ->
             Logger.error("Unknown event from GUI: #{inspect(something_else)}")
