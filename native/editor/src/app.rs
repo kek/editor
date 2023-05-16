@@ -157,6 +157,12 @@ impl EditorApp {
                         *active_file.lock().unwrap() = Some(path.clone());
                         match std::fs::read_to_string(path) {
                             Ok(contents) => {
+                                send_event_selfless(
+                                    EventType::DebugMessage,
+                                    vec!["read file".to_string(), contents.clone()],
+                                    &serial,
+                                    &outgoing_tx,
+                                );
                                 *buffer.lock().unwrap() = Some(contents);
                             }
                             Err(err) => send_event_selfless(
@@ -165,7 +171,7 @@ impl EditorApp {
                                 &serial,
                                 &outgoing_tx,
                             ),
-                        }
+                        };
                     }
                     EditorEvent {
                         typ: EventType::SetBufferCommand,
@@ -293,17 +299,9 @@ impl eframe::App for EditorApp {
                         .desired_width(ui.available_width())
                         .desired_rows(20);
                     if ui.add(text_edit).changed {
-                        // instead of this, send a diff to the backend
-                        self.outgoing_tx
-                            .send(EditorEvent {
-                                typ: EventType::BufferChanged,
-                                data: vec![text.clone()],
-                                serial: *self.serial.lock().unwrap(),
-                            })
-                            .unwrap();
-                        *self.serial.lock().unwrap() += 1;
-                        self.buffer = Arc::new(Mutex::new(Some(text)));
-                        // self.save_active_file();
+                        self.send_event(EventType::BufferChanged, vec![text.clone()]);
+                        // instead of this, update the buffer in backend
+                        *self.buffer.lock().unwrap() = Some(text.clone());
                     }
                 });
             }

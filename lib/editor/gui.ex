@@ -21,7 +21,7 @@ defmodule Editor.GUI do
         port
       end
 
-    {:ok, %{port: port, serial: 1}}
+    {:ok, %{port: port, serial: 0, path: nil}}
   end
 
   def handle_info({:DOWN, _, :port, _, _}, state) do
@@ -46,9 +46,18 @@ defmodule Editor.GUI do
             [{:stop, :shutdown, state}]
 
           %{typ: :click_file_event, data: [path]} ->
-            send_message(&Editor.Glue.open_file_json/2, path, state)
+            serial = send_message(&Editor.Glue.open_file_json/2, path, state)
             Logger.debug("GUI clicked file: #{inspect(path)}")
-            [{:noreply, %{state | serial: state.serial + 1}}]
+            [{:noreply, %{state | serial: serial, path: path}}]
+
+          %{typ: :buffer_changed, data: [contents]} ->
+            Logger.debug("GUI changed buffer: #{inspect(contents)}")
+            File.write!(state.path, contents)
+            [{:noreply, state}]
+
+          %{typ: :debug_message, data: messages} ->
+            Logger.debug("GUI debug message: #{inspect(messages)}")
+            [{:noreply, state}]
 
           something_else ->
             Logger.error("Unknown event from GUI: #{inspect(something_else)}")
@@ -82,16 +91,14 @@ defmodule Editor.GUI do
   def quit, do: quit(__MODULE__)
   def quit(gui), do: GenServer.call(gui, {:quit})
 
-  def handle_call({:set_available_files, paths}, _from, %{port: port, serial: serial} = state) do
-    message = Editor.Glue.set_available_files_json(paths, serial)
-    send(port, {self(), {:command, "#{message}\n"}})
-    {:reply, :ok, %{state | serial: serial + 1}}
+  def handle_call({:set_available_files, paths}, _from, state) do
+    serial = send_message(&Editor.Glue.set_available_files_json/2, paths, state)
+    {:reply, :ok, %{state | serial: serial}}
   end
 
-  def handle_call({:set_buffer, contents}, _from, %{port: port, serial: serial} = state) do
-    message = Editor.Glue.set_buffer_json(contents, state.serial)
-    send(port, {self(), {:command, "#{message}\n"}})
-    {:reply, :ok, %{state | serial: serial + 1}}
+  def handle_call({:set_buffer, contents}, _from, state) do
+    serial = send_message(&Editor.Glue.set_buffer_json/2, contents, state)
+    {:reply, :ok, %{state | serial: serial}}
   end
 
   def handle_call({:quit}, _from, state) do
@@ -106,7 +113,9 @@ defmodule Editor.GUI do
   end
 
   defp send_message(fun, arg, state) do
-    message = fun.(arg, state.serial)
+    serial = state.serial + 1
+    message = fun.(arg, serial)
     send(state.port, {self(), {:command, "#{message}\n"}})
+    serial
   end
 end

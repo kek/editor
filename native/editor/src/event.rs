@@ -15,6 +15,7 @@ pub(crate) enum EventType {
     SetBufferCommand,
     DebugGotUnknownMessage,
     BufferChanged,
+    DebugMessage,
 }
 
 #[derive(Serialize, Deserialize, rustler::NifMap)]
