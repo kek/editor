@@ -96,31 +96,6 @@ impl EditorApp {
         Default::default()
     }
 
-    // pub(crate) fn save_active_file(&mut self) {
-    // let arc = self.active_file.clone();
-    // let path = arc.lock().unwrap();
-    // match &self.buffer {
-    //     Some(contents) => std::fs::write(&path, contents).unwrap(),
-    //     None => {
-    //         self.send_event(
-    //             EventType::DebugNoBufferToSave,
-    //             vec!["no buffer to save".to_owned()],
-    //         );
-    //     }
-    // }
-    // }
-
-    // pub(crate) fn switch_to_file(&mut self, path: &String) {
-    // self.save_active_file();
-    // self.active_file = Some(path.clone());
-    // match std::fs::read_to_string(&self.active_file.clone().unwrap()) {
-    //     Ok(buffer) => self.buffer = Some(buffer),
-    //     Err(err) => {
-    //         self.send_event(EventType::ErrorSwitchToFile, vec![err.to_string()]);
-    //     }
-    // }
-    // }
-
     fn listen_for_events(self: &mut EditorApp, ctx: &egui::Context) {
         if !self.complete {
             let mutex = self.incoming_rx.clone();
@@ -135,7 +110,6 @@ impl EditorApp {
             thread::spawn(move || loop {
                 let rx = &mutex.lock().unwrap();
                 let msg = rx.recv().unwrap();
-                // let _msg_json = serde_json::to_string(&msg).unwrap();
                 match msg {
                     EditorEvent {
                         typ: EventType::SetAvailableFilesCommand,
@@ -219,8 +193,6 @@ fn send_event_selfless(
 
 impl eframe::App for EditorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // How to send message from frontend to backend
-        // self.outgoing_tx.send("update".to_owned()).unwrap();
         self.listen_for_events(ctx);
 
         egui::SidePanel::left("file_list").show(ctx, |ui| {
@@ -299,7 +271,6 @@ impl eframe::App for EditorApp {
                         .desired_rows(20);
                     if ui.add(text_edit).changed {
                         self.send_event(EventType::BufferChanged, vec![text.clone()]);
-                        // instead of this, update the buffer in backend
                         *self.buffer.lock().unwrap() = Some(text.clone());
                     }
                 });
@@ -308,7 +279,6 @@ impl eframe::App for EditorApp {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        // self.save_active_file();
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
 }
