@@ -293,8 +293,9 @@ impl eframe::App for EditorApp {
                         .desired_width(ui.available_width())
                         .desired_rows(20);
                     if ui.add(text_edit).changed {
-                        self.buffer = Arc::new(Mutex::new(Some(text))); // instead of this, send a diff to the backend
-                                                                        // self.save_active_file();
+                        // instead of this, send a diff to the backend
+                        self.buffer = Arc::new(Mutex::new(Some(text)));
+                        // self.save_active_file();
                     }
                 });
             }
