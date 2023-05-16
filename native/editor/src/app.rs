@@ -16,7 +16,7 @@ pub struct EditorApp {
     #[serde(skip)]
     pub(crate) output: String,
     #[serde(skip)]
-    pub(crate) available_files: Arc<Mutex<Vec<std::path::PathBuf>>>,
+    pub(crate) available_files: Arc<Mutex<Vec<String>>>,
     #[serde(skip)]
     pub(crate) outgoing_tx: mpsc::Sender<EditorEvent>,
     #[serde(skip)]
@@ -84,7 +84,7 @@ fn write_outgoing_events(outgoing_rx: mpsc::Receiver<EditorEvent>) -> impl FnOnc
     }
 }
 
-pub(crate) fn file_list() -> Vec<std::path::PathBuf> {
+pub(crate) fn file_list() -> Vec<String> {
     [].to_vec()
 }
 
@@ -142,11 +142,7 @@ impl EditorApp {
                         data: paths,
                         serial: _,
                     } => {
-                        let pathbufs = paths
-                            .iter()
-                            .map(|path| std::path::PathBuf::from(path))
-                            .collect();
-                        *available_files.lock().unwrap() = pathbufs;
+                        *available_files.lock().unwrap() = paths;
                     }
                     EditorEvent {
                         typ: EventType::OpenFileCommand,
@@ -235,8 +231,8 @@ impl eframe::App for EditorApp {
                 let mutex = &self.available_files.clone();
                 let files = mutex.lock().unwrap();
                 files.iter().for_each(|file| {
-                    let path = file.as_path().to_str().unwrap();
-                    let file_name = file.file_name().unwrap().to_str().unwrap();
+                    let path = file;
+                    let file_name = file;
                     if ui.button(file_name).clicked() {
                         self.send_event(EventType::ClickFileEvent, vec![path.to_owned()]);
                     }
