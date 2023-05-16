@@ -14,6 +14,7 @@ pub(crate) enum EventType {
     OpenFileCommand,
     SetBufferCommand,
     DebugGotUnknownMessage,
+    BufferChanged,
 }
 
 #[derive(Serialize, Deserialize, rustler::NifMap)]

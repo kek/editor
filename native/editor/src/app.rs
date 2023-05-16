@@ -294,6 +294,14 @@ impl eframe::App for EditorApp {
                         .desired_rows(20);
                     if ui.add(text_edit).changed {
                         // instead of this, send a diff to the backend
+                        self.outgoing_tx
+                            .send(EditorEvent {
+                                typ: EventType::BufferChanged,
+                                data: vec![text.clone()],
+                                serial: *self.serial.lock().unwrap(),
+                            })
+                            .unwrap();
+                        *self.serial.lock().unwrap() += 1;
                         self.buffer = Arc::new(Mutex::new(Some(text)));
                         // self.save_active_file();
                     }
