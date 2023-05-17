@@ -79,7 +79,7 @@ defmodule Editor.GUI do
             else
               Logger.debug("GUI clicked file: #{inspect(file)}")
               send_message(&Editor.Glue.open_file_json/2, [state.dir, file], state)
-              [{:noreply, state}]
+              [{:noreply, %{state | file: file}}]
             end
 
           %{typ: :buffer_changed, data: [contents]} ->
