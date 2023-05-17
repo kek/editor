@@ -2,8 +2,8 @@ defmodule Editor.GUI do
   use GenServer
   require Logger
 
-  def start_link(:please) do
-    GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
+  def start_link(name) do
+    GenServer.start_link(__MODULE__, :ok, name: name)
   end
 
   def init(:ok) do
@@ -39,7 +39,7 @@ defmodule Editor.GUI do
   end
 
   defp send_command(message) do
-    GenServer.cast(__MODULE__, {:send_command, message})
+    GenServer.cast(self(), {:send_command, message})
   end
 
   def handle_cast({:send_command, message}, %{serial: serial} = state) do
@@ -114,19 +114,14 @@ defmodule Editor.GUI do
     {:noreply, state}
   end
 
-  def set_available_files(paths), do: set_available_files(__MODULE__, paths)
-
   def set_available_files(gui, paths) do
     GenServer.call(gui, {:set_available_files, paths})
   end
-
-  def set_buffer(buffer), do: set_buffer(__MODULE__, buffer)
 
   def set_buffer(gui, buffer) do
     GenServer.call(gui, {:set_buffer, buffer})
   end
 
-  def quit, do: quit(__MODULE__)
   def quit(gui), do: GenServer.call(gui, {:quit})
 
   def handle_call({:set_available_files, paths}, _from, state) do
