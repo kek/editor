@@ -17,14 +17,14 @@ defmodule Editor.GUI do
         # {busy_limits_msgq, {Low, High} | disabled}
         Port.monitor(port)
         Process.link(port)
-        list_files(port, dir)
+        list_files(dir)
         port
       end
 
     {:ok, %{port: port, serial: 0, file: nil, dir: dir}}
   end
 
-  defp list_files(port, dir) do
+  defp list_files(dir) do
     Path.join([dir, "*"])
     |> Path.wildcard()
     |> Enum.map(&Path.basename/1)
@@ -74,7 +74,7 @@ defmodule Editor.GUI do
             path = Path.join([state.dir, file])
 
             if File.dir?(path) do
-              list_files(state.port, path)
+              list_files(path)
               [{:noreply, %{state | dir: path}}]
             else
               Logger.debug("GUI clicked file: #{inspect(file)}")
@@ -94,7 +94,7 @@ defmodule Editor.GUI do
           %{typ: :navigate_up} ->
             Logger.debug("GUI navigate up")
             parent = Path.dirname(state.dir)
-            list_files(state.port, Path.dirname(parent))
+            list_files(Path.dirname(parent))
             [{:noreply, %{state | dir: Path.dirname(parent)}}]
 
           something_else ->
