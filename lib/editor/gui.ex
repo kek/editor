@@ -10,16 +10,15 @@ defmodule Editor.GUI do
     Logger.debug("Starting GUI on #{inspect(self())}")
     dir = "."
 
-    port =
-      if Mix.env() != :test do
-        port = Port.open({:spawn, "priv/native/editor"}, [:binary])
+    gui_path = inspect(Path.join([List.to_string(:code.priv_dir(:editor)), "/native/editor"]))
 
-        # {busy_limits_msgq, {Low, High} | disabled}
-        Port.monitor(port)
-        Process.link(port)
-        list_files(dir)
-        port
-      end
+    Logger.debug(gui_path)
+    port = Port.open({:spawn, gui_path}, [:binary])
+
+    # {busy_limits_msgq, {Low, High} | disabled}
+    Port.monitor(port)
+    Process.link(port)
+    list_files(dir)
 
     {:ok, %{port: port, serial: 0, file: nil, dir: dir}}
   end

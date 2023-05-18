@@ -28,3 +28,4 @@ editor-*.tar
 /priv/native/*.so
 /priv/native/editor
 /target
+/burrito_out
